@@ -57,8 +57,6 @@ let rec feed_decoder feed_data src_buf src_ofs src_len =
     then feed_decoder cont src_buf (src_ofs + consume) (src_len - consume)
     else cont
 
-let tmp = open_out_bin "data.dump"
-
 let decode_boundaries boundary (data_callback : data -> unit) : unit feed_data =
   let work_buf = String.make 10240 ' ' in (* working buffer; incoming data *)
   let response_buf = Buffer.create 1024 in (* buffer that collects response data *)
@@ -96,8 +94,6 @@ let decode_boundaries boundary (data_callback : data -> unit) : unit feed_data =
     request_data work_buf (String.length work_buf) @@  
 	function
       | Ok length ->
-	let (_:int) = IO.output tmp work_buf 0 length in
-	IO.flush tmp;
   	  let rec find_boundary responses state boundary_at at =
   	    if at < length then
 	      (* let _ = *)

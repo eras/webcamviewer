@@ -177,9 +177,10 @@ let make_http_mt () =
 let main () =
   let http_mt = make_http_mt () in
   let main_window = GWindow.window ~border_width:10 () in
+  Gobject.set GtkBaseProps.Window.P.allow_shrink main_window#as_window true;
   ignore (main_window#connect#destroy ~callback:destroy);
   let vbox = GPack.vbox ~packing:main_window#add () in
-  let quit_button = GButton.button ~label:"Quit" ~packing:vbox#add () in
+  let quit_button = GButton.button ~label:"Quit" ~packing:(vbox#pack ~expand:false) () in
   ignore (quit_button#connect#clicked ~callback:destroy);
   let view1 = view http_mt ~packing:vbox#add () in
   main_window#show ();

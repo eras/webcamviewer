@@ -22,13 +22,20 @@ let view ?packing http_mt () =
   Curl.set_userpwd http (user ^ ":" ^ password);
   let boundary_decoder = ref (fun _ -> assert false) in
   Curl.set_writefunction http (fun str ->
-    (* Printf.printf "%d bytes\n%!" (String.length str) (\* str *\); *)
+    Printf.printf "%d bytes\n%!" (String.length str) (* str *);
     let decoder = BoundaryDecoder.feed_decoder (!boundary_decoder ()) str 0 (String.length str) in
     boundary_decoder := (fun () -> decoder);
     String.length str
   );
+  let count = ref 0 in 
   let received_data (data : BoundaryDecoder.data) =
-    Printf.printf "Received data (%d bytes)\n%!" (String.length data.data_content);
+    let content_length = int_of_string (List.assoc "Content-Length" data.data_header) in
+    Printf.printf "Received data (%d/%d bytes)\n%!" (String.length data.data_content) content_length;
+    let filename = Printf.sprintf "output/%04d.jpg" !count in
+    incr count;
+    output_file ~filename ~text:data.data_content;
+    let jpeg = Jpeg.decode (Jpeg.array_of_string data.data_content) in
+    ()
   in
   let header_finished header =
     let boundary = 

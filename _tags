@@ -1,4 +1,5 @@
 <*>: package(lablgtk2), package(lablgtk2.auto-init), package(curl), package(pcre), package(batteries)
 <*>: debug, annot
 <*>: use_jpeg
+<*>: no_warn_40
 

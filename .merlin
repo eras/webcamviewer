@@ -1,0 +1,5 @@
+B _build
+PKG pcre
+PKG curl
+PKG batteries
+PKG lablgtk2

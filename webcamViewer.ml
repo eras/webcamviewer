@@ -14,15 +14,68 @@ let trim_crnl str =
   then String.sub str 0 (String.length str - 2)
   else str
 
+let pi2 = 8. *. atan 1.
+
+let expand_rgb width height rgb =
+  let open Bigarray in
+  let open Array1 in
+  let array = create (kind rgb) (layout rgb) (width * height * 4) in
+  for c = 0 to width * height - 1 do
+    set array (c * 4 + 0) (get rgb (c * 3 + 0));
+    set array (c * 4 + 1) (get rgb (c * 3 + 1));
+    set array (c * 4 + 2) (get rgb (c * 3 + 2));
+    set array (c * 4 + 3) 0;
+  done;
+  array
+
 let view ?packing http_mt () =
-  let widget = GMisc.drawing_area ?packing ~width:640 ~height:480 () in
+  let drawing_area = GMisc.drawing_area ?packing ~width:640 ~height:480 () in
+  (* let pixmap = GDraw.pixmap ~width:640 ~height:480 () in *)
+  (* let drawable = new GDraw.drawable drawing_area#misc#window in *)
+  let image = ref None in
+  let draw cr width height =
+    let open Cairo in
+    let r = 0.25 *. width in
+    set_source_rgba cr 0. 1. 0. 0.5;
+    match !image with
+    | None -> 
+      arc cr (0.5 *. width) (0.35 *. height) r 0. pi2;
+      fill cr;
+    (* set_source_rgba cr 1. 0. 0. 0.5; *)
+      arc cr (0.35 *. width) (0.65 *. height) r 0. pi2;
+      fill cr;
+    (* set_source_rgba cr 0. 0. 1. 0.5; *)
+      arc cr (0.65 *. width) (0.65 *. height) r 0. pi2;
+      fill cr
+    | Some image ->
+      let aspect = 640.0 /. 480.0 in
+      let x_scale, y_scale =
+	if width /. height > aspect 
+	then (height /. 480.0, height /. 480.0)
+	else (width /. 640.0, width /. 640.0)
+      in
+      scale cr x_scale y_scale;
+      set_source_surface cr image ~x:0.0 ~y:0.0;
+      rectangle cr 0.0 0.0 640.0 480.0;
+      fill cr
+  in
+  let expose ev =
+    let open Cairo in
+    let cr = Cairo_gtk.create drawing_area#misc#window in
+    let allocation = drawing_area#misc#allocation in
+    draw cr (float allocation.Gtk.width) (float allocation.Gtk.height);
+    true
+  in
+  (* drawing_area#event#connect#expose ~callback:expose; *)
+  ignore (drawing_area#event#connect#expose expose);
+  drawing_area#event#add [`EXPOSURE];
   let http = Curl.init () in
   let header = ref [] in
   Curl.set_url http url;
   Curl.set_userpwd http (user ^ ":" ^ password);
   let boundary_decoder = ref (fun _ -> assert false) in
   Curl.set_writefunction http (fun str ->
-    Printf.printf "%d bytes\n%!" (String.length str) (* str *);
+    (* Printf.printf "%d bytes\n%!" (String.length str) (\* str *\); *)
     let decoder = BoundaryDecoder.feed_decoder (!boundary_decoder ()) str 0 (String.length str) in
     boundary_decoder := (fun () -> decoder);
     String.length str
@@ -30,12 +83,13 @@ let view ?packing http_mt () =
   let count = ref 0 in 
   let received_data (data : BoundaryDecoder.data) =
     let content_length = int_of_string (List.assoc "Content-Length" data.data_header) in
-    Printf.printf "Received data (%d/%d bytes)\n%!" (String.length data.data_content) content_length;
+    (* Printf.printf "Received data (%d/%d bytes)\n%!" (String.length data.data_content) content_length; *)
     let filename = Printf.sprintf "output/%04d.jpg" !count in
     incr count;
     output_file ~filename ~text:data.data_content;
-    let jpeg = Jpeg.decode (Jpeg.array_of_string data.data_content) in
-    ()
+    let rgb_data = expand_rgb 640 480 (Jpeg.decode_int (Jpeg.array_of_string data.data_content)) in
+    image := Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 640 480);
+    drawing_area#misc#draw None
   in
   let header_finished header =
     let boundary = 
@@ -67,7 +121,7 @@ let view ?packing http_mt () =
     String.length str
   );
   Curl.Multi.add http_mt http;
-  widget
+  drawing_area
 
 let make_http_mt () =
   let http_mt = Curl.Multi.create () in

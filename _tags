@@ -1,4 +1,4 @@
-<*>: package(lablgtk2), package(lablgtk2.auto-init), package(curl), package(pcre), package(batteries)
+<*>: package(lablgtk2), package(lablgtk2.auto-init), package(curl), package(pcre), package(batteries), package(cairo2), package(cairo2.lablgtk2)
 <*>: debug, annot
 <*>: use_jpeg
 <*>: no_warn_40

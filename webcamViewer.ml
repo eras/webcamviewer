@@ -83,21 +83,26 @@ let view ?packing http_mt () =
   );
   let count = ref 0 in 
   let received_data (data : BoundaryDecoder.data) =
-    let content_length = int_of_string (List.assoc "Content-Length" data.data_header) in
-    (* Printf.printf "Received data (%d/%d bytes)\n%!" (String.length data.data_content) content_length; *)
-    (* let filename = Printf.sprintf "output/%04d.jpg" !count in *)
-    (* incr count; *)
-    (* output_file ~filename ~text:data.data_content; *)
-    let rgb_data = expand_rgb 640 480 (Jpeg.decode_int (Jpeg.array_of_string data.data_content)) in
-    image := Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 640 480);
-    drawing_area#misc#draw None
+    show_exn @@ fun () ->
+      let content_length = int_of_string (List.assoc "Content-Length" data.data_header) in
+      (* Printf.printf "Received data (%d/%d bytes)\n%!" (String.length data.data_content) content_length; *)
+      if save_images then (
+	let filename = Printf.sprintf "output/%04d.jpg" !count in
+	incr count;
+	output_file ~filename ~text:data.data_content;
+      );
+      let rgb_data = expand_rgb 640 480 (Jpeg.decode_int (Jpeg.array_of_string data.data_content)) in
+      image := Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 640 480);
+      drawing_area#misc#draw None
   in
   let header_finished header =
     let boundary = 
       let contenttype = List.assoc "Content-Type" header in
       Printf.printf "contenttype: %s\n" contenttype;
-      match Pcre.extract ~full_match:false ~pat:"^multipart/x-mixed-replace; *boundary=(.*)" contenttype with
-      | [|boundary|] -> boundary
+      match Pcre.extract ~full_match:false ~pat:"^multipart/x-mixed-replace; *boundary=(?:--)?(.*)" contenttype with
+      | [|boundary|] -> 
+	Printf.printf "boundary: %s\n%!" boundary;
+	boundary
       | _ -> failwith (Printf.sprintf "Failed to find expected Content-Type -header (%s)" contenttype)
     in
     let decoder = BoundaryDecoder.decode_boundaries boundary received_data in

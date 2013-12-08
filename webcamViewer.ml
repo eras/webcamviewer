@@ -9,6 +9,8 @@ type source = {
   source_url : string;
 }
 
+let save_images = false
+
 let read_streams () = File.lines_of "streams" |> List.of_enum
 
 let trim_crnl str =

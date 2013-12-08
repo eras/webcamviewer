@@ -11,7 +11,7 @@ type source = {
 
 let save_images = false
 
-let read_streams () = File.lines_of "streams" |> List.of_enum
+let read_streams () = File.lines_of (Unix.getenv "HOME" ^ "/.webcamviewer") |> List.of_enum
 
 let trim_crnl str =
   if String.length str >= 2

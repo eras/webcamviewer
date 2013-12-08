@@ -2,6 +2,12 @@ type array_frame = (char, Bigarray.int8_unsigned_elt, Bigarray.c_layout) Bigarra
 
 type 'a rgb_array_frame = ('a, Bigarray.int8_unsigned_elt, Bigarray.c_layout) Bigarray.Array1.t
 
+type 'a image = {
+  image_width : int;
+  image_height : int;
+  image_data : 'a rgb_array_frame;
+}
+
 (* [array_of_string frame_string] converts the string frame_string to
    a sequence of bytes in array_frame *)
 let array_of_string : string -> array_frame =
@@ -14,5 +20,5 @@ let array_of_string : string -> array_frame =
     done;
     ar
 
-external decode_char : array_frame -> char rgb_array_frame = "jpeg_decode"
-external decode_int : array_frame -> int rgb_array_frame = "jpeg_decode"
+external decode_char : array_frame -> char image = "jpeg_decode"
+external decode_int : array_frame -> int image = "jpeg_decode"

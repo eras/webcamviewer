@@ -61,6 +61,7 @@ jpeg_decode(value frame)
 {
   CAMLparam1(frame);
   CAMLlocal1(result);
+  CAMLlocal1(rgb_data);
 
   struct jpeg_source_mgr src;
   void* orig = Data_bigarray_val(frame);
@@ -82,6 +83,7 @@ jpeg_decode(value frame)
   dec->err->error_exit = &ojpeg_error_exit;
   dec->src = &src;
 
+  result = caml_alloc_tuple(3);
   if (setjmp(custom_dec.decode_env) == 0) {
     jpeg_read_header(dec, TRUE);
 
@@ -89,11 +91,14 @@ jpeg_decode(value frame)
 
     int size = dec->output_width * dec->output_height * 3;
     int pitch = dec->output_width * 3;
-    result = alloc_bigarray_dims(CAML_BA_UINT8 | CAML_BA_C_LAYOUT, 1,
+    rgb_data = alloc_bigarray_dims(CAML_BA_UINT8 | CAML_BA_C_LAYOUT, 1,
 				 NULL, size);
-    JSAMPLE* begin = (void*) Data_bigarray_val(result);
+    caml_modify(&Field(result, 0), Val_int(dec->output_width));
+    caml_modify(&Field(result, 1), Val_int(dec->output_height));
+    caml_modify(&Field(result, 2), rgb_data);
+    JSAMPLE* begin = (void*) Data_bigarray_val(rgb_data);
     JSAMPLE* buffer = begin;
-    const JSAMPLE* end = (void*) (((char*) Data_bigarray_val(result)) + size);
+    const JSAMPLE* end = (void*) (((char*) Data_bigarray_val(rgb_data)) + size);
 
     if (setjmp(custom_dec.decode_env) == 0) {
       while (dec->output_scanline < dec->output_height) {
@@ -114,8 +119,10 @@ jpeg_decode(value frame)
     // uh oh 2
     printf("header decoding error\n");
 
-    result = alloc_bigarray_dims(CAML_BA_UINT8 | CAML_BA_C_LAYOUT, 1,
-				 NULL, 0);
+    caml_modify(&Field(result, 0), Val_int(0));
+    caml_modify(&Field(result, 1), Val_int(0));
+    rgb_data = alloc_bigarray_dims(CAML_BA_UINT8 | CAML_BA_C_LAYOUT, 1,
+                                   NULL, 0);
   }
 
   jpeg_destroy_decompress(dec);

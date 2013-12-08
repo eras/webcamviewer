@@ -58,16 +58,17 @@ let view ?packing url http_mt () =
     (* set_source_rgba cr 0. 0. 1. 0.5; *)
       arc cr (0.65 *. width) (0.65 *. height) r 0. pi2;
       fill cr
-    | Some image ->
-      let aspect = 640.0 /. 480.0 in
+    | Some (image, image_width, image_height) ->
+      let (im_width, im_height) = (float image_width, float image_height) in
+      let aspect = im_width /. im_height in
       let x_scale, y_scale =
 	if width /. height > aspect 
-	then (height /. 480.0, height /. 480.0)
-	else (width /. 640.0, width /. 640.0)
+	then (height /. im_height, height /. im_height)
+	else (width /. im_width, width /. im_width)
       in
       scale cr x_scale y_scale;
       set_source_surface cr image ~x:0.0 ~y:0.0;
-      rectangle cr 0.0 0.0 640.0 480.0;
+      rectangle cr 0.0 0.0 im_width im_height;
       fill cr
   in
   let expose ev =
@@ -101,8 +102,10 @@ let view ?packing url http_mt () =
 	incr count;
 	output_file ~filename ~text:data.data_content;
       );
-      let rgb_data = expand_rgb 640 480 (Jpeg.decode_int (Jpeg.array_of_string data.data_content)) in
-      image := Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 640 480);
+      let jpeg_image = Jpeg.decode_int (Jpeg.array_of_string data.data_content) in
+      let (width, height) = (jpeg_image.Jpeg.image_width, jpeg_image.Jpeg.image_height) in
+      let rgb_data = expand_rgb width height jpeg_image.Jpeg.image_data in
+      image := Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 width height, width, height);
       drawing_area#misc#draw None
   in
   let header_finished header =

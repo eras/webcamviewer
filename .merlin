@@ -3,3 +3,5 @@ PKG pcre
 PKG curl
 PKG batteries
 PKG lablgtk2
+PKG cairo2
+FLG -w -40

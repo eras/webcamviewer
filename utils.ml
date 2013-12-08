@@ -9,7 +9,12 @@ let split_key_value str =
   key, value
 
 let split_http_header str =
-  match Pcre.extract ~full_match:false ~pat:"^HTTP/1\\.1 ([0-9]+) (.*)" str with
-  | [|code; message|] -> (int_of_string code, message)
-  | _ -> failwith "Failed to parse HTTP header"
+  try 
+    let fields = Pcre.extract ~full_match:false ~pat:"^HTTP/[^ ]* ([0-9]+) (.*)" str in
+    ( match fields with
+    | [|code; message|] -> (int_of_string code, message)
+    | _ -> failwith "Failed to parse HTTP header" )
+  with Not_found -> 
+    failwith ("Failed to parse HTTP header: " ^ str)
+      
 

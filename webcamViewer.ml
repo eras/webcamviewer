@@ -20,18 +20,6 @@ let trim_crnl str =
 
 let pi2 = 8. *. atan 1.
 
-let expand_rgb width height rgb =
-  let open Bigarray in
-  let open Array1 in
-  let array = create (kind rgb) (layout rgb) (width * height * 4) in
-  for c = 0 to width * height - 1 do
-    unsafe_set array (c * 4 + 0) (unsafe_get rgb (c * 3 + 0));
-    unsafe_set array (c * 4 + 1) (unsafe_get rgb (c * 3 + 1));
-    unsafe_set array (c * 4 + 2) (unsafe_get rgb (c * 3 + 2));
-    unsafe_set array (c * 4 + 3) 0;
-  done;
-  array
-
 let show_exn f =
   try 
     f ()
@@ -102,9 +90,9 @@ let view ?packing url http_mt () =
 	incr count;
 	output_file ~filename ~text:data.data_content;
       );
-      let jpeg_image = Jpeg.decode_int Jpeg.rgb3 (Jpeg.array_of_string data.data_content) in
+      let jpeg_image = Jpeg.decode_int Jpeg.rgb4 (Jpeg.array_of_string data.data_content) in
       let (width, height) = (jpeg_image.Jpeg.image_width, jpeg_image.Jpeg.image_height) in
-      let rgb_data = expand_rgb width height jpeg_image.Jpeg.image_data in
+      let rgb_data = jpeg_image.Jpeg.image_data in
       image := Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 width height, width, height);
       drawing_area#misc#draw None
   in

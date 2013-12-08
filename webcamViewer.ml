@@ -5,9 +5,11 @@ let (@@) a b = a b
 let destroy () =
   GMain.Main.quit ()
 
-let url = "http://cam1.sec.mf/videostream.cgi"
-let user = "admin"
-let password = ""
+type source = {
+  source_url : string;
+}
+
+let read_streams () = File.lines_of "streams" |> List.of_enum
 
 let trim_crnl str =
   if String.length str >= 2
@@ -72,7 +74,6 @@ let view ?packing http_mt () =
   let http = Curl.init () in
   let header = ref [] in
   Curl.set_url http url;
-  Curl.set_userpwd http (user ^ ":" ^ password);
   let boundary_decoder = ref (fun _ -> assert false) in
   Curl.set_writefunction http (fun str ->
     (* Printf.printf "%d bytes\n%!" (String.length str) (\* str *\); *)
@@ -182,7 +183,8 @@ let main () =
   let vbox = GPack.vbox ~packing:main_window#add () in
   let quit_button = GButton.button ~label:"Quit" ~packing:(vbox#pack ~expand:false) () in
   ignore (quit_button#connect#clicked ~callback:destroy);
-  let view1 = view http_mt ~packing:vbox#add () in
+  let urls = read_streams () in
+  List.iter (fun url -> ignore (view url http_mt ~packing:vbox#add ())) urls;
   main_window#show ();
   GMain.Main.main ()
 

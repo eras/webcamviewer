@@ -30,6 +30,13 @@ let expand_rgb width height rgb =
   done;
   array
 
+let show_exn f =
+  try 
+    f ()
+  with exn ->
+    Printf.printf "Exception: %s (%s)\n%!" (Printexc.to_string exn) (Printexc.get_backtrace ());
+    raise exn
+
 let view ?packing url http_mt () =
   let drawing_area = GMisc.drawing_area ?packing ~width:640 ~height:480 () in
   (* let pixmap = GDraw.pixmap ~width:640 ~height:480 () in *)
@@ -62,11 +69,12 @@ let view ?packing url http_mt () =
       fill cr
   in
   let expose ev =
-    let open Cairo in
-    let cr = Cairo_gtk.create drawing_area#misc#window in
-    let allocation = drawing_area#misc#allocation in
-    draw cr (float allocation.Gtk.width) (float allocation.Gtk.height);
-    true
+    show_exn @@ fun () ->
+      let open Cairo in
+      let cr = Cairo_gtk.create drawing_area#misc#window in
+      let allocation = drawing_area#misc#allocation in
+      draw cr (float allocation.Gtk.width) (float allocation.Gtk.height);
+      true
   in
   (* drawing_area#event#connect#expose ~callback:expose; *)
   ignore (drawing_area#event#connect#expose expose);
@@ -121,10 +129,11 @@ let view ?packing url http_mt () =
   in
   receive_header := receive_http_header;
   Curl.set_headerfunction http (fun str ->
-    let trimmed_str = trim_crnl str in
-    Printf.printf "Processing header: %d %s\n%!" (String.length trimmed_str) trimmed_str;
-    !receive_header trimmed_str;
-    String.length str
+    show_exn @@ fun () ->
+      let trimmed_str = trim_crnl str in
+      Printf.printf "Processing header: %d %s\n%!" (String.length trimmed_str) trimmed_str;
+      !receive_header trimmed_str;
+      String.length str
   );
   Curl.Multi.add http_mt http;
   drawing_area

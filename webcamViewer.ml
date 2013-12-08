@@ -25,10 +25,10 @@ let expand_rgb width height rgb =
   let open Array1 in
   let array = create (kind rgb) (layout rgb) (width * height * 4) in
   for c = 0 to width * height - 1 do
-    set array (c * 4 + 0) (get rgb (c * 3 + 0));
-    set array (c * 4 + 1) (get rgb (c * 3 + 1));
-    set array (c * 4 + 2) (get rgb (c * 3 + 2));
-    set array (c * 4 + 3) 0;
+    unsafe_set array (c * 4 + 0) (unsafe_get rgb (c * 3 + 0));
+    unsafe_set array (c * 4 + 1) (unsafe_get rgb (c * 3 + 1));
+    unsafe_set array (c * 4 + 2) (unsafe_get rgb (c * 3 + 2));
+    unsafe_set array (c * 4 + 3) 0;
   done;
   array
 

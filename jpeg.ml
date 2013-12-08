@@ -16,7 +16,7 @@ let array_of_string : string -> array_frame =
     let open Array1 in
     let ar = create char c_layout (String.length str) in
     for c = 0 to String.length str - 1 do
-      set ar c (String.get str c)
+      unsafe_set ar c (String.unsafe_get str c)
     done;
     ar
 

@@ -30,7 +30,7 @@ let expand_rgb width height rgb =
   done;
   array
 
-let view ?packing http_mt () =
+let view ?packing url http_mt () =
   let drawing_area = GMisc.drawing_area ?packing ~width:640 ~height:480 () in
   (* let pixmap = GDraw.pixmap ~width:640 ~height:480 () in *)
   (* let drawable = new GDraw.drawable drawing_area#misc#window in *)

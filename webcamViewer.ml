@@ -102,7 +102,7 @@ let view ?packing url http_mt () =
 	incr count;
 	output_file ~filename ~text:data.data_content;
       );
-      let jpeg_image = Jpeg.decode_int (Jpeg.array_of_string data.data_content) in
+      let jpeg_image = Jpeg.decode_int Jpeg.rgb3 (Jpeg.array_of_string data.data_content) in
       let (width, height) = (jpeg_image.Jpeg.image_width, jpeg_image.Jpeg.image_height) in
       let rgb_data = expand_rgb width height jpeg_image.Jpeg.image_data in
       image := Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 width height, width, height);

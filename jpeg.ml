@@ -2,9 +2,10 @@ type array_frame = (char, Bigarray.int8_unsigned_elt, Bigarray.c_layout) Bigarra
 
 type 'a rgb_array_frame = ('a, Bigarray.int8_unsigned_elt, Bigarray.c_layout) Bigarray.Array1.t
 
-type 'a image = {
+type ('a, 'format) image = {
   image_width : int;
   image_height : int;
+  image_rgb_format : 'format;
   image_data : 'a rgb_array_frame;
 }
 
@@ -20,5 +21,15 @@ let array_of_string : string -> array_frame =
     done;
     ar
 
-external decode_char : array_frame -> char image = "jpeg_decode"
-external decode_int : array_frame -> int image = "jpeg_decode"
+type rgb3
+type rgb4
+
+type 'a pixel_format = {
+  pf_bytes_per_pixel : int;
+} 
+
+let rgb3 = { pf_bytes_per_pixel = 3; }
+let rgb4 = { pf_bytes_per_pixel = 4; }
+
+external decode_char : 'rgb pixel_format -> array_frame -> (char, 'format) image = "jpeg_decode"
+external decode_int : 'rgb pixel_format -> array_frame -> (int, 'format) image = "jpeg_decode"

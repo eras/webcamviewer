@@ -57,9 +57,9 @@ ojpeg_error_exit(j_common_ptr cinfo)
 }
 
 value
-jpeg_decode(value frame)
+jpeg_decode(value pixel_format, value frame)
 {
-  CAMLparam1(frame);
+  CAMLparam2(pixel_format, frame);
   CAMLlocal1(result);
   CAMLlocal1(rgb_data);
 
@@ -84,27 +84,51 @@ jpeg_decode(value frame)
   dec->src = &src;
 
   result = caml_alloc_tuple(3);
+  caml_modify(&Field(result, 2), pixel_format);
   if (setjmp(custom_dec.decode_env) == 0) {
     jpeg_read_header(dec, TRUE);
 
     jpeg_start_decompress(dec);
 
-    int size = dec->output_width * dec->output_height * 3;
-    int pitch = dec->output_width * 3;
+    int bytes_per_pixel = Int_val(Field(pixel_format, 0));
+
+    int size = dec->output_width * dec->output_height * bytes_per_pixel;
+    int pitch = dec->output_width * bytes_per_pixel;
     rgb_data = alloc_bigarray_dims(CAML_BA_UINT8 | CAML_BA_C_LAYOUT, 1,
 				 NULL, size);
     caml_modify(&Field(result, 0), Val_int(dec->output_width));
     caml_modify(&Field(result, 1), Val_int(dec->output_height));
-    caml_modify(&Field(result, 2), rgb_data);
     JSAMPLE* begin = (void*) Data_bigarray_val(rgb_data);
     JSAMPLE* buffer = begin;
     const JSAMPLE* end = (void*) (((char*) Data_bigarray_val(rgb_data)) + size);
 
     if (setjmp(custom_dec.decode_env) == 0) {
-      while (dec->output_scanline < dec->output_height) {
-	assert(buffer + pitch <= end);
-	jpeg_read_scanlines(dec, &buffer, 1);
-	buffer += pitch;
+      switch (bytes_per_pixel) {
+      case 3: {
+        while (dec->output_scanline < dec->output_height) {
+          assert(buffer + pitch <= end);
+          jpeg_read_scanlines(dec, &buffer, 1);
+          buffer += pitch;
+        }
+      } break;
+      case 4: {
+        JSAMPLE tmp_buffer[dec->output_width * 3];
+        JSAMPLE* tmp_buffer_ptr = tmp_buffer;
+        while (dec->output_scanline < dec->output_height) {
+          unsigned c;
+          assert(buffer + pitch <= end);
+          jpeg_read_scanlines(dec, &tmp_buffer_ptr, 1);
+          JSAMPLE* src = tmp_buffer;
+          JSAMPLE* dst = buffer;
+          for (c = 0; c < dec->output_width; ++c) {
+            *(dst++) = *(src++);
+            *(dst++) = *(src++);
+            *(dst++) = *(src++);
+            *(dst++) = 0;
+          }
+          buffer += pitch;
+        }
+      } break;
       }
       jpeg_finish_decompress(dec);
     } else {
@@ -124,6 +148,7 @@ jpeg_decode(value frame)
     rgb_data = alloc_bigarray_dims(CAML_BA_UINT8 | CAML_BA_C_LAYOUT, 1,
                                    NULL, 0);
   }
+  caml_modify(&Field(result, 3), rgb_data);
 
   jpeg_destroy_decompress(dec);
 

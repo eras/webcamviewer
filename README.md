@@ -7,7 +7,7 @@ simultaneously. Licensed under the MIT license.
 Compiling
 ---------
 
-You need OCaml 4.01.0 and the following libraries:
+You need OCaml 4.01.0 and the following OCaml libraries:
 
 * batteries
 * cairo2
@@ -15,7 +15,10 @@ You need OCaml 4.01.0 and the following libraries:
 * lablgtk2
 * pcre
 
-The following command should bring the dependencies if you have opam installed:
+In addition you need libjpeg development headers (and library)
+installed. Tested with Debian Unstable's libjpeg8-dev.
+
+The following command should bring the OCaml dependencies if you have opam installed:
 
 	opam install lablgtk ocurl pcre-ocaml batteries cairo2
 

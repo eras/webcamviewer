@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <jpeglib.h>
 #include <setjmp.h>
 #include <assert.h>
 
@@ -10,6 +9,9 @@
 #include <caml/custom.h>
 #include <caml/fail.h>
 #include <caml/bigarray.h>
+
+#ifdef LIBJPEG
+#include <jpeglib.h>
 
 static void
 ojpeg_init_source(j_decompress_ptr dec)
@@ -154,4 +156,60 @@ jpeg_decode(value pixel_format, value frame)
 
   CAMLreturn(result);
 }
+#endif
 
+#ifdef TURBOJPEG
+#include <turbojpeg.h>
+
+value
+jpeg_decode(value pixel_format, value frame)
+{
+  CAMLparam2(pixel_format, frame);
+  CAMLlocal1(result);
+  CAMLlocal1(rgb_data);
+
+  tjhandle tj = tjInitDecompress();
+
+  int width, height;
+  int jpegSubsamp;
+
+  unsigned char* data = Data_bigarray_val(frame);
+  unsigned long data_size = Caml_ba_array_val(frame)->dim[0];
+  
+  result = caml_alloc_tuple(4);
+  caml_modify(&Field(result, 2), pixel_format);
+
+  if (tjDecompressHeader2(tj, data, data_size, &width, &height, &jpegSubsamp) == 0) {
+    int bytes_per_pixel = Int_val(Field(pixel_format, 0));
+    int size = width * height * bytes_per_pixel;
+    int pitch = width * bytes_per_pixel;
+    enum TJPF tj_pixel_format;
+
+    rgb_data = alloc_bigarray_dims(CAML_BA_UINT8 | CAML_BA_C_LAYOUT, 1,
+                                   NULL, size);
+    caml_modify(&Field(result, 0), Val_int(width));
+    caml_modify(&Field(result, 1), Val_int(height));
+    caml_modify(&Field(result, 3), rgb_data);
+    
+    switch (bytes_per_pixel) {
+    case 3: {
+      tj_pixel_format = TJPF_RGB;
+    } break;
+    case 4: {
+      tj_pixel_format = TJPF_RGBX;
+    } break;
+    default:
+      assert(0);
+    }
+
+    if (tjDecompress2(tj, data, data_size, (void*) Data_bigarray_val(rgb_data),
+                      width, pitch, height, tj_pixel_format, 0) == 0) {
+      // all ok!
+    }
+
+    tjDestroy(tj);
+  }
+
+  CAMLreturn(result);
+}
+#endif

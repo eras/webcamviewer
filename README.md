@@ -15,8 +15,8 @@ You need OCaml 4.01.0 and the following OCaml libraries:
 * lablgtk2
 * pcre
 
-In addition you need libjpeg development headers (and library)
-installed. Tested with Debian Unstable's libjpeg8-dev.
+In addition you need libturbojpeg development headers (and library)
+installed. Tested with Debian Unstable's libturbojpeg1-dev 1.3.0..
 
 The following command should bring the OCaml dependencies if you have opam installed:
 

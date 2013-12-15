@@ -83,7 +83,7 @@ jpeg_decode(value pixel_format, value frame)
   dec->err->error_exit = &ojpeg_error_exit;
   dec->src = &src;
 
-  result = caml_alloc_tuple(3);
+  result = caml_alloc_tuple(4);
   caml_modify(&Field(result, 2), pixel_format);
   if (setjmp(custom_dec.decode_env) == 0) {
     jpeg_read_header(dec, TRUE);

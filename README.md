@@ -17,19 +17,19 @@ You need OCaml 4.01.0 and the following libraries:
 
 The following command should bring the dependencies if you have opam installed:
 
-opam install lablgtk ocurl pcre-ocaml batteries cairo2
+	opam install lablgtk ocurl pcre-ocaml batteries cairo2
 
 Then compiling is done by:
 
-ocamlbuild -use-ocamlfind webcamViewer.native
+	ocamlbuild -use-ocamlfind webcamViewer.native
 
 And install:
 
-install webcamViewer.native ~/bin/webcamviewer
+	install webcamViewer.native ~/bin/webcamviewer
 
 Setting up
 ----------
 
 Put the urls to ~/.webcamviewer. One line per url. For example:
 
-http://admin:admin@foscam1/videostream.cgi
+	http://admin:admin@foscam1/videostream.cgi

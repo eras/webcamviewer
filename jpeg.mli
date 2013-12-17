@@ -20,5 +20,5 @@ type rgb4
 val rgb3 : rgb3 pixel_format
 val rgb4 : rgb4 pixel_format
 
-external decode_char : 'rgb pixel_format -> array_frame -> (char, 'format) image = "jpeg_decode"
-external decode_int : 'rgb pixel_format -> array_frame -> (int, 'format) image = "jpeg_decode"
+external decode_char : 'rgb pixel_format -> array_frame -> (char, 'format) image option = "jpeg_decode"
+external decode_int : 'rgb pixel_format -> array_frame -> (int, 'format) image option = "jpeg_decode"

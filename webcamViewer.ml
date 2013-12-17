@@ -90,11 +90,14 @@ let view ?packing url http_mt () =
 	incr count;
 	output_file ~filename ~text:data.data_content;
       );
-      let jpeg_image = Jpeg.decode_int Jpeg.rgb4 (Jpeg.array_of_string data.data_content) in
-      let (width, height) = (jpeg_image.Jpeg.image_width, jpeg_image.Jpeg.image_height) in
-      let rgb_data = jpeg_image.Jpeg.image_data in
-      image := Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 width height, width, height);
-      drawing_area#misc#draw None
+      match Jpeg.decode_int Jpeg.rgb4 (Jpeg.array_of_string data.data_content) with
+      | Some jpeg_image ->
+	let (width, height) = (jpeg_image.Jpeg.image_width, jpeg_image.Jpeg.image_height) in
+	let rgb_data = jpeg_image.Jpeg.image_data in
+	image := Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 width height, width, height);
+	drawing_area#misc#draw None
+      | None ->
+	()
   in
   let header_finished header =
     let boundary = 

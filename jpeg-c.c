@@ -62,10 +62,12 @@ value
 jpeg_decode(value pixel_format, value frame)
 {
   CAMLparam2(pixel_format, frame);
-  CAMLlocal1(result);
-  CAMLlocal1(rgb_data);
+  CAMLlocal3(image, rgb_data, result_option);
 
   struct jpeg_source_mgr src;
+
+  result_option = Val_int(0);
+
   void* orig = Data_bigarray_val(frame);
   src.next_input_byte	= orig;
   src.bytes_in_buffer	= Caml_ba_array_val(frame)->dim[0];
@@ -85,8 +87,8 @@ jpeg_decode(value pixel_format, value frame)
   dec->err->error_exit = &ojpeg_error_exit;
   dec->src = &src;
 
-  result = caml_alloc_tuple(4);
-  caml_modify(&Field(result, 2), pixel_format);
+  image = caml_alloc_tuple(4);
+  caml_modify(&Field(image, 2), pixel_format);
   if (setjmp(custom_dec.decode_env) == 0) {
     jpeg_read_header(dec, TRUE);
 
@@ -98,8 +100,8 @@ jpeg_decode(value pixel_format, value frame)
     int pitch = dec->output_width * bytes_per_pixel;
     rgb_data = alloc_bigarray_dims(CAML_BA_UINT8 | CAML_BA_C_LAYOUT, 1,
 				 NULL, size);
-    caml_modify(&Field(result, 0), Val_int(dec->output_width));
-    caml_modify(&Field(result, 1), Val_int(dec->output_height));
+    caml_modify(&Field(image, 0), Val_int(dec->output_width));
+    caml_modify(&Field(image, 1), Val_int(dec->output_height));
     JSAMPLE* begin = (void*) Data_bigarray_val(rgb_data);
     JSAMPLE* buffer = begin;
     const JSAMPLE* end = (void*) (((char*) Data_bigarray_val(rgb_data)) + size);
@@ -141,20 +143,17 @@ jpeg_decode(value pixel_format, value frame)
 	++buffer;
       }
     }
+    result_option = caml_alloc(1, 0);
+    Store_field(result_option, 0, image);
   } else {
-    // uh oh 2
+    // uh oh. returning None
     printf("header decoding error\n");
-
-    caml_modify(&Field(result, 0), Val_int(0));
-    caml_modify(&Field(result, 1), Val_int(0));
-    rgb_data = alloc_bigarray_dims(CAML_BA_UINT8 | CAML_BA_C_LAYOUT, 1,
-                                   NULL, 0);
   }
-  caml_modify(&Field(result, 3), rgb_data);
+  caml_modify(&Field(image, 3), rgb_data);
 
   jpeg_destroy_decompress(dec);
 
-  CAMLreturn(result);
+  CAMLreturn(result_option);
 }
 #endif
 
@@ -165,8 +164,7 @@ value
 jpeg_decode(value pixel_format, value frame)
 {
   CAMLparam2(pixel_format, frame);
-  CAMLlocal1(result);
-  CAMLlocal1(rgb_data);
+  CAMLlocal3(image, rgb_data, result_option);
 
   tjhandle tj = tjInitDecompress();
 
@@ -175,9 +173,10 @@ jpeg_decode(value pixel_format, value frame)
 
   unsigned char* data = Data_bigarray_val(frame);
   unsigned long data_size = Caml_ba_array_val(frame)->dim[0];
-  
-  result = caml_alloc_tuple(4);
-  caml_modify(&Field(result, 2), pixel_format);
+
+  result_option = Val_int(0);
+  image = caml_alloc_tuple(4);
+  caml_modify(&Field(image, 2), pixel_format);
 
   if (tjDecompressHeader2(tj, data, data_size, &width, &height, &jpegSubsamp) == 0) {
     int bytes_per_pixel = Int_val(Field(pixel_format, 0));
@@ -187,9 +186,9 @@ jpeg_decode(value pixel_format, value frame)
 
     rgb_data = alloc_bigarray_dims(CAML_BA_UINT8 | CAML_BA_C_LAYOUT, 1,
                                    NULL, size);
-    caml_modify(&Field(result, 0), Val_int(width));
-    caml_modify(&Field(result, 1), Val_int(height));
-    caml_modify(&Field(result, 3), rgb_data);
+    caml_modify(&Field(image, 0), Val_int(width));
+    caml_modify(&Field(image, 1), Val_int(height));
+    caml_modify(&Field(image, 3), rgb_data);
     
     switch (bytes_per_pixel) {
     case 3: {
@@ -205,11 +204,17 @@ jpeg_decode(value pixel_format, value frame)
     if (tjDecompress2(tj, data, data_size, (void*) Data_bigarray_val(rgb_data),
                       width, pitch, height, tj_pixel_format, 0) == 0) {
       // all ok!
+      result_option = caml_alloc(1, 0);
+      Store_field(result_option, 0, image);
+    } else {
+      // failed :(
     }
 
     tjDestroy(tj);
+  } else {
+    // failed :(
   }
 
-  CAMLreturn(result);
+  CAMLreturn(result_option);
 }
 #endif

@@ -31,5 +31,5 @@ type 'a pixel_format = {
 let rgb3 = { pf_bytes_per_pixel = 3; }
 let rgb4 = { pf_bytes_per_pixel = 4; }
 
-external decode_char : 'rgb pixel_format -> array_frame -> (char, 'format) image = "jpeg_decode"
-external decode_int : 'rgb pixel_format -> array_frame -> (int, 'format) image = "jpeg_decode"
+external decode_char : 'rgb pixel_format -> array_frame -> (char, 'format) image option = "jpeg_decode"
+external decode_int : 'rgb pixel_format -> array_frame -> (int, 'format) image option = "jpeg_decode"

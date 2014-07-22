@@ -6,11 +6,24 @@ let destroy () =
   GMain.Main.quit ()
 
 type source = {
-  source_url : string;
+  source_name : string;
+  source_url  : string;
 }
 
+(* let read_config_file () = *)
+(*   let open Config_file in *)
+(*   let config_file = create_options_file (Unix.getenv "HOME" ^ "/.webcamviewer2") in *)
+(*   let streams = new group  *)
 
-let read_streams () = File.lines_of (Unix.getenv "HOME" ^ "/.webcamviewer") |> List.of_enum
+let read_config_file () =
+  let open Toml in
+  let config_file = Unix.getenv "HOME" ^ "/.webcamviewer" in
+  let cameras = tables_to_list (from_filename config_file) in
+  cameras |> List.map @@ fun (name, camera_config) ->
+    { source_url = get_string camera_config "url";
+      source_name = name; }
+
+(* let read_streams () = File.lines_of (Unix.getenv "HOME" ^ "/.webcamviewer") |> List.of_enum *)
 
 let trim_crnl str =
   if String.length str >= 2
@@ -229,8 +242,8 @@ let main () =
   let vbox = GPack.vbox ~packing:main_window#add () in
   let quit_button = GButton.button ~label:"Quit" ~packing:(vbox#pack ~expand:false) () in
   ignore (quit_button#connect#clicked ~callback:destroy);
-  let urls = read_streams () in
-  List.iter (fun url -> ignore (view url http_mt ~packing:vbox#add ())) urls;
+  let sources = read_config_file () in
+  List.iter (fun source -> ignore (view source http_mt ~packing:vbox#add ())) sources;
   main_window#show ();
   GMain.Main.main ()
 

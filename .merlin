@@ -4,4 +4,5 @@ PKG curl
 PKG batteries
 PKG lablgtk2
 PKG cairo2
+PKG toml
 FLG -w -40

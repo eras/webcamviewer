@@ -18,3 +18,23 @@ let split_http_header str =
     failwith ("Failed to parse HTTP header: " ^ str)
       
 
+let indices_of pred str =
+  let indices = ref [] in
+  for c = String.length str - 1 downto 0 do
+    if pred (str.[c]) then
+      indices := c::!indices
+  done;
+  !indices
+
+let mkdir_rec path =
+  let separators = indices_of ((=) '/') path in
+  let prepaths = (separators @ [String.length path]) |> List.map @@ fun index ->
+    String.sub path 0 index
+  in
+  let prepaths = List.filter ((<>) "") prepaths in
+  let mkdir dir =
+    try Unix.mkdir dir 0o750
+    with Unix.Unix_error (Unix.EEXIST, _, _) -> ()
+  in 
+  prepaths |> List.iter mkdir
+

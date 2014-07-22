@@ -39,6 +39,19 @@ let show_exn f =
     Printf.printf "Exception: %s (%s)\n%!" (Printexc.to_string exn) (Printexc.get_backtrace ());
     raise exn
 
+let path_of_tm { Unix.tm_sec = sec;
+                   tm_min = min;
+                   tm_hour = hour;
+                   tm_mday = mday;
+                   tm_mon = mon;
+                   tm_year = year } =
+  Printf.sprintf
+    "%04d-%02d-%02d/%02d"
+    (year + 1900)
+    (mon + 1)
+    (mday)
+    (hour)
+
 let string_of_tm { Unix.tm_sec = sec;
                    tm_min = min;
                    tm_hour = hour;
@@ -62,7 +75,10 @@ let frac x = fst (modf x)
 let string_of_time_us t =
   string_of_tm (Unix.localtime t) ^ Printf.sprintf ".%06d" (int_of_float (frac t *. 1000000.0))
 
-let view ?packing url http_mt () =
+let path_of_time t = path_of_tm (Unix.localtime t)
+
+let view ?packing source http_mt () =
+  let url = source.source_url in
   let drawing_area = GMisc.drawing_area ?packing ~width:640 ~height:480 () in
   (* let pixmap = GDraw.pixmap ~width:640 ~height:480 () in *)
   (* let drawable = new GDraw.drawable drawing_area#misc#window in *)
@@ -136,7 +152,10 @@ let view ?packing url http_mt () =
       let content_length = int_of_string (List.assoc "Content-Length" data.data_header) in
       (* Printf.printf "Received data (%d/%d bytes)\n%!" (String.length data.data_content) content_length; *)
       if !save_images then (
-	let filename = Printf.sprintf "output/%s.jpg" (string_of_time_us (Unix.gettimeofday ())) in
+        let now = Unix.gettimeofday () in
+        let directory = Printf.sprintf "output/%s/%s" source.source_name (path_of_time now) in
+        Utils.mkdir_rec directory;
+	let filename = Printf.sprintf "%s/%s.jpg" directory (string_of_time_us now) in
 	output_file ~filename ~text:data.data_content;
       );
       match Jpeg.decode_int Jpeg.rgb4 (Jpeg.array_of_string data.data_content) with

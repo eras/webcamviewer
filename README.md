@@ -7,13 +7,14 @@ simultaneously. Licensed under the MIT license.
 Compiling
 ---------
 
-You need OCaml 4.01.0 and the following OCaml libraries:
+You need OCaml 4.01.0 and the following OCaml libraries, all easily acquired with opam:
 
 * batteries
 * cairo2
 * curl
 * lablgtk2
 * pcre
+* toml
 
 In addition you need libturbojpeg development headers (and library)
 installed. Tested with Debian Unstable's libturbojpeg1-dev 1.3.0..

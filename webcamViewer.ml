@@ -9,7 +9,6 @@ type source = {
   source_url : string;
 }
 
-let save_images = false
 
 let read_streams () = File.lines_of (Unix.getenv "HOME" ^ "/.webcamviewer") |> List.of_enum
 
@@ -27,10 +26,34 @@ let show_exn f =
     Printf.printf "Exception: %s (%s)\n%!" (Printexc.to_string exn) (Printexc.get_backtrace ());
     raise exn
 
+let string_of_tm { Unix.tm_sec = sec;
+                   tm_min = min;
+                   tm_hour = hour;
+                   tm_mday = mday;
+                   tm_mon = mon;
+                   tm_year = year } =
+  Printf.sprintf
+    "%04d-%02d-%02d %02d:%02d:%02d"
+    (year + 1900)
+    (mon + 1)
+    (mday)
+    (hour)
+    (min)
+    (sec)
+
+let string_of_time t =
+  string_of_tm (Unix.localtime t)
+
+let frac x = fst (modf x)
+
+let string_of_time_us t =
+  string_of_tm (Unix.localtime t) ^ Printf.sprintf ".%06d" (int_of_float (frac t *. 1000000.0))
+
 let view ?packing url http_mt () =
   let drawing_area = GMisc.drawing_area ?packing ~width:640 ~height:480 () in
   (* let pixmap = GDraw.pixmap ~width:640 ~height:480 () in *)
   (* let drawable = new GDraw.drawable drawing_area#misc#window in *)
+  let save_images = ref false in
   let image = ref None in
   let draw cr width height =
     let open Cairo in
@@ -67,9 +90,24 @@ let view ?packing url http_mt () =
       draw cr (float allocation.Gtk.width) (float allocation.Gtk.height);
       true
   in
+  let button_press ev =
+    let menu = GMenu.menu () in
+    let (label, action) = 
+      if !save_images then
+        "Save off", (fun () -> save_images := false)
+      else 
+        "Save on", (fun () -> save_images := true)
+    in
+    let menuItem = GMenu.menu_item ~label:label ~packing:menu#append () in
+    ignore (menuItem#connect#activate ~callback:action);
+    menu#popup ~button:3 ~time:(GdkEvent.get_time ev);
+    true
+  in
   (* drawing_area#event#connect#expose ~callback:expose; *)
   ignore (drawing_area#event#connect#expose expose);
   drawing_area#event#add [`EXPOSURE];
+  ignore (drawing_area#event#connect#button_press button_press);
+  drawing_area#event#add [`BUTTON_PRESS];
   let http = Curl.init () in
   let header = ref [] in
   Curl.set_url http url;
@@ -80,14 +118,12 @@ let view ?packing url http_mt () =
     boundary_decoder := (fun () -> decoder);
     String.length str
   );
-  let count = ref 0 in 
   let received_data (data : BoundaryDecoder.data) =
     show_exn @@ fun () ->
       let content_length = int_of_string (List.assoc "Content-Length" data.data_header) in
       (* Printf.printf "Received data (%d/%d bytes)\n%!" (String.length data.data_content) content_length; *)
-      if save_images then (
-	let filename = Printf.sprintf "output/%04d.jpg" !count in
-	incr count;
+      if !save_images then (
+	let filename = Printf.sprintf "output/%s.jpg" (string_of_time_us (Unix.gettimeofday ())) in
 	output_file ~filename ~text:data.data_content;
       );
       match Jpeg.decode_int Jpeg.rgb4 (Jpeg.array_of_string data.data_content) with

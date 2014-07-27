@@ -10,6 +10,11 @@ type source = {
   source_url  : string;
 }
 
+type config = {
+  config_sources : source list;
+  config_output_base : string;
+}
+
 (* let read_config_file () = *)
 (*   let open Config_file in *)
 (*   let config_file = create_options_file (Unix.getenv "HOME" ^ "/.webcamviewer2") in *)
@@ -18,10 +23,23 @@ type source = {
 let read_config_file () =
   let open Toml in
   let config_file = Unix.getenv "HOME" ^ "/.webcamviewer" in
-  let cameras = tables_to_list (from_filename config_file) in
-  cameras |> List.map @@ fun (name, camera_config) ->
-    { source_url = get_string camera_config "url";
-      source_name = name; }
+  let general, cameras = List.partition (fun (name, _) -> name = "general") @@ tables_to_list (from_filename config_file) in
+  let sources =
+    cameras |> List.map @@ fun (name, camera_config) ->
+      { source_url = get_string camera_config "url";
+        source_name = name; } in
+  let default_general_option key default =
+    match general with
+    | [] -> default
+    | (_, general)::_ ->
+      try get_string general key
+      with Not_found -> default
+  in
+  let config = {
+    config_sources = sources;
+    config_output_base = default_general_option "output" "output";
+  } in
+  config
 
 (* let read_streams () = File.lines_of (Unix.getenv "HOME" ^ "/.webcamviewer") |> List.of_enum *)
 
@@ -77,7 +95,7 @@ let string_of_time_us t =
 
 let path_of_time t = path_of_tm (Unix.localtime t)
 
-let view ?packing source http_mt () =
+let view ?packing config source http_mt () =
   let url = source.source_url in
   let drawing_area = GMisc.drawing_area ?packing ~width:640 ~height:480 () in
   (* let pixmap = GDraw.pixmap ~width:640 ~height:480 () in *)
@@ -153,7 +171,7 @@ let view ?packing source http_mt () =
       (* Printf.printf "Received data (%d/%d bytes)\n%!" (String.length data.data_content) content_length; *)
       if !save_images then (
         let now = Unix.gettimeofday () in
-        let directory = Printf.sprintf "output/%s/%s" source.source_name (path_of_time now) in
+        let directory = Printf.sprintf "%s/%s/%s" config.config_output_base source.source_name (path_of_time now) in
         Utils.mkdir_rec directory;
 	let filename = Printf.sprintf "%s/%s.jpg" directory (string_of_time_us now) in
 	output_file ~filename ~text:data.data_content;
@@ -261,8 +279,8 @@ let main () =
   let vbox = GPack.vbox ~packing:main_window#add () in
   let quit_button = GButton.button ~label:"Quit" ~packing:(vbox#pack ~expand:false) () in
   ignore (quit_button#connect#clicked ~callback:destroy);
-  let sources = read_config_file () in
-  List.iter (fun source -> ignore (view source http_mt ~packing:vbox#add ())) sources;
+  let config = read_config_file () in
+  List.iter (fun source -> ignore (view config source http_mt ~packing:vbox#add ())) config.config_sources;
   main_window#show ();
   GMain.Main.main ()
 

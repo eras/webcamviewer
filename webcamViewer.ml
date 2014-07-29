@@ -188,10 +188,8 @@ let view ?packing config source http_mt () =
   let header_finished header =
     let boundary = 
       let contenttype = List.assoc "Content-Type" header in
-      Printf.printf "contenttype: %s\n" contenttype;
       match Pcre.extract ~full_match:false ~pat:"^multipart/x-mixed-replace; *boundary=(?:--)?(.*)" contenttype with
       | [|boundary|] -> 
-	Printf.printf "boundary: %s\n%!" boundary;
 	boundary
       | _ -> failwith (Printf.sprintf "Failed to find expected Content-Type -header (%s)" contenttype)
     in
@@ -202,7 +200,7 @@ let view ?packing config source http_mt () =
   let receive_header = ref (fun _ -> assert false) in
   let rec receive_http_header str =
       let (code, message) = Utils.split_http_header str in
-      Printf.printf "HTTP: %d %s\n%!" code message;
+      (* Printf.printf "HTTP: %d %s\n%!" code message; *)
       receive_header := receive_kv;
   and receive_kv str =
     if str = ""
@@ -213,7 +211,7 @@ let view ?packing config source http_mt () =
   Curl.set_headerfunction http (fun str ->
     show_exn @@ fun () ->
       let trimmed_str = trim_crnl str in
-      Printf.printf "Processing header: %d %s\n%!" (String.length trimmed_str) trimmed_str;
+      (* Printf.printf "Processing header: %d %s\n%!" (String.length trimmed_str) trimmed_str; *)
       !receive_header trimmed_str;
       String.length str
   );

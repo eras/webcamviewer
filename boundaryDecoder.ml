@@ -67,15 +67,15 @@ let decode_boundaries boundary (data_callback : data -> unit) : unit feed_data =
   let begin_time = ref 0.0 in
   let found_header_row key value =
     header := (key, value) :: !header;
-	  Printf.printf "Got: %s = %s\n%!" key value;
+    (* Printf.printf "Got: %s = %s\n%!" key value; *)
     Buffer.clear header_buf
   in
   let found_header_end () =
-    Printf.printf "Got header end! %s: %d\n%!" (Buffer.contents header_buf) (Buffer.length response_buf);
+    (* Printf.printf "Got header end! %s: %d\n%!" (Buffer.contents header_buf) (Buffer.length response_buf); *)
     ()
   in
   let found_boundary () =
-    Printf.printf "Got boundary! size of data: %d\n%!" (Buffer.length response_buf);
+    (* Printf.printf "Got boundary! size of data: %d\n%!" (Buffer.length response_buf); *)
     let v = 
 	{ data_header = List.rev !header;
 	  data_content = Buffer.contents response_buf;

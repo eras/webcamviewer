@@ -108,12 +108,8 @@ let when_button n f ev =
   else
     false
 
-let view ?packing config source http_mt () =
-  let url = source.source_url in
+let image_view ?packing () =
   let drawing_area = GMisc.drawing_area ?packing ~width:640 ~height:480 () in
-  (* let pixmap = GDraw.pixmap ~width:640 ~height:480 () in *)
-  (* let drawable = new GDraw.drawable drawing_area#misc#window in *)
-  let save_images = ref false in
   let image = ref None in
   let draw cr width height =
     let open Cairo in
@@ -154,6 +150,22 @@ let view ?packing config source http_mt () =
       draw cr (float allocation.Gtk.width) (float allocation.Gtk.height);
       true
   in
+  (* drawing_area#event#connect#expose ~callback:expose; *)
+  ignore (drawing_area#event#connect#expose expose);
+  drawing_area#event#add [`EXPOSURE];
+  let interface =
+    object
+      method set_image image' =
+        image := image';
+        drawing_area#misc#draw None
+    end
+  in
+  (drawing_area, interface)
+
+let view ?packing config source http_mt () =
+  let url = source.source_url in
+  let save_images = ref false in
+  let (drawing_area, interface) = image_view ?packing () in
   let popup_menu_button_press ev =
     let menu = GMenu.menu () in
     let (label, action) = 
@@ -197,8 +209,8 @@ let view ?packing config source http_mt () =
       | Some jpeg_image ->
 	let (width, height) = (jpeg_image.Jpeg.image_width, jpeg_image.Jpeg.image_height) in
 	let rgb_data = jpeg_image.Jpeg.image_data in
-	image := Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 width height, width, height);
-	drawing_area#misc#draw None
+        let image = Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 width height, width, height) in
+        interface#set_image image;
       | None ->
 	()
   in

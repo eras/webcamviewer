@@ -166,6 +166,7 @@ let view ?packing config source http_mt () =
   let url = source.source_url in
   let save_images = ref false in
   let (drawing_area, interface) = image_view ?packing () in
+  let fullscreen = ref None in
   let popup_menu_button_press ev =
     let menu = GMenu.menu () in
     let (label, action) = 
@@ -179,10 +180,32 @@ let view ?packing config source http_mt () =
     menu#popup ~button:3 ~time:(GdkEvent.get_time ev);
     true
   in
-  (* drawing_area#event#connect#expose ~callback:expose; *)
-  ignore (drawing_area#event#connect#expose expose);
-  drawing_area#event#add [`EXPOSURE];
+  let fullscreen_window _ev =
+    let fullscreen_close ev =
+      match !fullscreen with
+      | None -> false
+      | Some (window, _) ->
+         window#destroy ();
+         fullscreen := None;
+         true
+    in
+    ( match !fullscreen with
+      | None ->
+         let w = GWindow.window () in
+         w#show ();
+         w#maximize ();
+         let (drawing_area, interface) = image_view ~packing:w#add () in
+         fullscreen := Some (w, (drawing_area, interface));
+         
+         drawing_area#event#add [`BUTTON_PRESS];
+         ignore (drawing_area#event#connect#button_press fullscreen_close);
+         ignore (w#event#connect#delete fullscreen_close);
+      | Some _ ->
+         () );
+    true
+  in
   ignore (drawing_area#event#connect#button_press (when_button 3 popup_menu_button_press));
+  ignore (drawing_area#event#connect#button_press (when_button 1 fullscreen_window));
   drawing_area#event#add [`BUTTON_PRESS];
   let http = Curl.init () in
   let header = ref [] in
@@ -211,6 +234,7 @@ let view ?packing config source http_mt () =
 	let rgb_data = jpeg_image.Jpeg.image_data in
         let image = Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 width height, width, height) in
         interface#set_image image;
+        Option.may (fun (_, (_, interface)) -> interface#set_image image) !fullscreen;
       | None ->
 	()
   in

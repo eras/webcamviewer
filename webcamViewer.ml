@@ -95,6 +95,19 @@ let string_of_time_us t =
 
 let path_of_time t = path_of_tm (Unix.localtime t)
 
+let button_number ev =
+  match GdkEvent.get_type ev, GdkEvent.unsafe_cast ev with
+  | `BUTTON_PRESS, ev ->
+     Some (GdkEvent.Button.button ev)
+  | _ -> 
+     None
+
+let when_button n f ev =
+  if button_number ev = Some n then
+    f ev
+  else
+    false
+
 let view ?packing config source http_mt () =
   let url = source.source_url in
   let drawing_area = GMisc.drawing_area ?packing ~width:640 ~height:480 () in
@@ -157,7 +170,7 @@ let view ?packing config source http_mt () =
   (* drawing_area#event#connect#expose ~callback:expose; *)
   ignore (drawing_area#event#connect#expose expose);
   drawing_area#event#add [`EXPOSURE];
-  ignore (drawing_area#event#connect#button_press button_press);
+  ignore (drawing_area#event#connect#button_press (when_button 3 button_press));
   drawing_area#event#add [`BUTTON_PRESS];
   let http = Curl.init () in
   let header = ref [] in

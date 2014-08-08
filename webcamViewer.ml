@@ -124,6 +124,10 @@ let view ?packing config source http_mt () =
 	then (height /. im_height, height /. im_height)
 	else (width /. im_width, width /. im_width)
       in
+      translate
+        cr
+        (width /. 2.0 -. x_scale *. im_width /. 2.0)
+        (height /. 2.0 -. y_scale *. im_height /. 2.0);
       scale cr x_scale y_scale;
       set_source_surface cr image ~x:0.0 ~y:0.0;
       rectangle cr 0.0 0.0 im_width im_height;

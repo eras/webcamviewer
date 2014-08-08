@@ -154,7 +154,7 @@ let view ?packing config source http_mt () =
       draw cr (float allocation.Gtk.width) (float allocation.Gtk.height);
       true
   in
-  let button_press ev =
+  let popup_menu_button_press ev =
     let menu = GMenu.menu () in
     let (label, action) = 
       if !save_images then
@@ -170,7 +170,7 @@ let view ?packing config source http_mt () =
   (* drawing_area#event#connect#expose ~callback:expose; *)
   ignore (drawing_area#event#connect#expose expose);
   drawing_area#event#add [`EXPOSURE];
-  ignore (drawing_area#event#connect#button_press (when_button 3 button_press));
+  ignore (drawing_area#event#connect#button_press (when_button 3 popup_menu_button_press));
   drawing_area#event#add [`BUTTON_PRESS];
   let http = Curl.init () in
   let header = ref [] in

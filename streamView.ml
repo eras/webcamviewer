@@ -13,14 +13,18 @@ let header_finished received_data boundary_decoder http header =
   boundary_decoder := (fun () -> decoder);
   ()
 
-let start_http http_mt http url process =
+let start_http ~on_eof http_mt http url process =
   let header = ref [] in
   Curl.set_url http url;
   let boundary_decoder = ref (fun _ -> assert false) in
   Curl.set_writefunction http (fun str ->
-      (* Printf.printf "%d bytes\n%!" (String.length str) (\* str *\); *)
-    let decoder = BoundaryDecoder.feed_decoder (!boundary_decoder ()) str 0 (String.length str) in
-    boundary_decoder := (fun () -> decoder);
+    if String.length str = 0 then (
+      on_eof ();
+    ) else (
+        (* Printf.printf "%d bytes\n%!" (String.length str) (\* str *\); *)
+      let decoder = BoundaryDecoder.feed_decoder (!boundary_decoder ()) str 0 (String.length str) in
+      boundary_decoder := (fun () -> decoder);
+    );
     String.length str
   );
   let receive_header = ref (fun _ -> assert false) in
@@ -109,7 +113,13 @@ let view ?packing config source http_mt () =
       | None ->
 	 ()
   in
-  let http = Curl.init () in
-    start_http http_mt http url (received_data config source interface http);
-    drawing_area
+  let rec start () =
+    let http = Curl.init () in
+    let on_eof () =
+      start ()
+    in
+    start_http ~on_eof http_mt http url (received_data config source interface http)
+  in
+  start ();
+  drawing_area
 

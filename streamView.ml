@@ -1,6 +1,48 @@
 open Batteries
 open Common
 
+let header_finished received_data boundary_decoder http header =
+  let boundary = 
+    let contenttype = List.assoc "Content-Type" header in
+    match Pcre.extract ~full_match:false ~pat:"^multipart/x-mixed-replace; *boundary=(?:--)?(.*)" contenttype with
+    | [|boundary|] -> 
+       boundary
+    | _ -> failwith (Printf.sprintf "Failed to find expected Content-Type -header (%s)" contenttype)
+  in
+  let decoder = BoundaryDecoder.decode_boundaries boundary received_data in
+  boundary_decoder := (fun () -> decoder);
+  ()
+
+let start_http http_mt http url process =
+  let header = ref [] in
+  Curl.set_url http url;
+  let boundary_decoder = ref (fun _ -> assert false) in
+  Curl.set_writefunction http (fun str ->
+      (* Printf.printf "%d bytes\n%!" (String.length str) (\* str *\); *)
+    let decoder = BoundaryDecoder.feed_decoder (!boundary_decoder ()) str 0 (String.length str) in
+    boundary_decoder := (fun () -> decoder);
+    String.length str
+  );
+  let receive_header = ref (fun _ -> assert false) in
+  let rec receive_http_header str =
+    let (code, message) = Utils.split_http_header str in
+      (* Printf.printf "HTTP: %d %s\n%!" code message; *)
+    receive_header := receive_kv;
+  and receive_kv str =
+    if str = ""
+    then header_finished process boundary_decoder http (List.rev !header) (* Done *)
+    else header := Utils.split_key_value str::!header;
+  in
+  receive_header := receive_http_header;
+  Curl.set_headerfunction http (fun str ->
+    show_exn @@ fun () ->
+      let trimmed_str = trim_crnl str in
+        (* Printf.printf "Processing header: %d %s\n%!" (String.length trimmed_str) trimmed_str; *)
+      !receive_header trimmed_str;
+      String.length str
+  );
+  Curl.Multi.add http_mt http
+
 let view ?packing config source http_mt () =
   let url = source.source_url in
   let save_images = ref false in
@@ -46,20 +88,10 @@ let view ?packing config source http_mt () =
   ignore (drawing_area#event#connect#button_press (when_button 3 popup_menu_button_press));
   ignore (drawing_area#event#connect#button_press (when_button 1 fullscreen_window));
   drawing_area#event#add [`BUTTON_PRESS];
-  let http = Curl.init () in
-  let header = ref [] in
-  Curl.set_url http url;
-  let boundary_decoder = ref (fun _ -> assert false) in
-  Curl.set_writefunction http (fun str ->
-    (* Printf.printf "%d bytes\n%!" (String.length str) (\* str *\); *)
-    let decoder = BoundaryDecoder.feed_decoder (!boundary_decoder ()) str 0 (String.length str) in
-    boundary_decoder := (fun () -> decoder);
-    String.length str
-  );
-  let received_data (data : BoundaryDecoder.data) =
+  let received_data config source interface http (data : BoundaryDecoder.data) =
     show_exn @@ fun () ->
       let content_length = int_of_string (List.assoc "Content-Length" data.data_header) in
-      (* Printf.printf "Received data (%d/%d bytes)\n%!" (String.length data.data_content) content_length; *)
+        (* Printf.printf "Received data (%d/%d bytes)\n%!" (String.length data.data_content) content_length; *)
       if !save_images then (
         let now = Unix.gettimeofday () in
         let directory = Printf.sprintf "%s/%s/%s" config.config_output_base source.source_name (path_of_time now) in
@@ -69,44 +101,15 @@ let view ?packing config source http_mt () =
       );
       match Jpeg.decode_int Jpeg.rgb4 (Jpeg.array_of_string data.data_content) with
       | Some jpeg_image ->
-	let (width, height) = (jpeg_image.Jpeg.image_width, jpeg_image.Jpeg.image_height) in
-	let rgb_data = jpeg_image.Jpeg.image_data in
-        let image = Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 width height, width, height) in
-        interface#set_image image;
-        Option.may (fun (_, (_, interface)) -> interface#set_image image) !fullscreen;
+	 let (width, height) = (jpeg_image.Jpeg.image_width, jpeg_image.Jpeg.image_height) in
+	 let rgb_data = jpeg_image.Jpeg.image_data in
+         let image = Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 width height, width, height) in
+         interface#set_image image;
+         Option.may (fun (_, (_, interface)) -> interface#set_image image) !fullscreen;
       | None ->
-	()
+	 ()
   in
-  let header_finished header =
-    let boundary = 
-      let contenttype = List.assoc "Content-Type" header in
-      match Pcre.extract ~full_match:false ~pat:"^multipart/x-mixed-replace; *boundary=(?:--)?(.*)" contenttype with
-      | [|boundary|] -> 
-	boundary
-      | _ -> failwith (Printf.sprintf "Failed to find expected Content-Type -header (%s)" contenttype)
-    in
-    let decoder = BoundaryDecoder.decode_boundaries boundary received_data in
-    boundary_decoder := (fun () -> decoder);
-    ()
-  in
-  let receive_header = ref (fun _ -> assert false) in
-  let rec receive_http_header str =
-      let (code, message) = Utils.split_http_header str in
-      (* Printf.printf "HTTP: %d %s\n%!" code message; *)
-      receive_header := receive_kv;
-  and receive_kv str =
-    if str = ""
-    then header_finished (List.rev !header) (* Done *)
-    else header := Utils.split_key_value str::!header;
-  in
-  receive_header := receive_http_header;
-  Curl.set_headerfunction http (fun str ->
-    show_exn @@ fun () ->
-      let trimmed_str = trim_crnl str in
-      (* Printf.printf "Processing header: %d %s\n%!" (String.length trimmed_str) trimmed_str; *)
-      !receive_header trimmed_str;
-      String.length str
-  );
-  Curl.Multi.add http_mt http;
-  drawing_area
+  let http = Curl.init () in
+    start_http http_mt http url (received_data config source interface http);
+    drawing_area
 

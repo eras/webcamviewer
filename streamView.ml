@@ -20,6 +20,7 @@ let start_http ~on_eof http_mt url process =
   let boundary_decoder = ref (fun _ -> assert false) in
   Curl.set_writefunction http (fun str ->
     if String.length str = 0 then (
+      Printf.fprintf stderr "StreamView: EOF at %s\n%!" url;
       on_eof ();
       0
     ) else (

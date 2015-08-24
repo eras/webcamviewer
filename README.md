@@ -23,6 +23,11 @@ The following command should bring the OCaml dependencies if you have opam insta
 
 	opam install lablgtk ocurl pcre-ocaml batteries cairo2
 
+Also as the code hasn't yet been updated to work with Toml 2, the
+following needs to be configured:
+
+	opam pin add toml 1.0.0
+
 Then compiling is done by:
 
 	ocamlbuild webcamViewer.native

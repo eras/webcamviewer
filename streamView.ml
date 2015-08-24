@@ -21,12 +21,18 @@ let start_http ~on_eof http_mt url process =
   Curl.set_writefunction http (fun str ->
     if String.length str = 0 then (
       on_eof ();
+      0
     ) else (
+      try
         (* Printf.printf "%d bytes\n%!" (String.length str) (\* str *\); *)
-      let decoder = BoundaryDecoder.feed_decoder (!boundary_decoder ()) str 0 (String.length str) in
-      boundary_decoder := (fun () -> decoder);
+        let decoder = BoundaryDecoder.feed_decoder (!boundary_decoder ()) str 0 (String.length str) in
+        boundary_decoder := (fun () -> decoder);
+        String.length str
+      with exn ->
+        Printf.fprintf stderr "StreamView: uncaught exception: %s\n%!" (Printexc.to_string exn);
+        Printexc.print_backtrace stdout;
+        0
     );
-    String.length str
   );
   let receive_header = ref (fun _ -> assert false) in
   let rec receive_http_header str =

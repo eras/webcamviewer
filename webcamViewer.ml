@@ -32,9 +32,18 @@ let read_config_file () =
 
 (* let read_streams () = File.lines_of (Unix.getenv "HOME" ^ "/.webcamviewer") |> List.of_enum *)
 
+let string_of_cond = function
+  | `ERR -> "ERR"
+  | `HUP -> "HUP"
+  | `IN -> "IN"
+  | `NVAL -> "NVAL"
+  | `OUT -> "OUT"
+  | `PRI -> "PRI"
+    
 let make_http_mt () =
   let http_mt = Curl.Multi.create () in
   let http_mt_fds = Hashtbl.create 10 in
+  let notify_removals = ref [] in
   let io_callback fd conds =
     let fd_status =
       let open Curl.Multi in
@@ -45,6 +54,16 @@ let make_http_mt () =
       | _			  -> EV_AUTO
     in
     ignore (Curl.Multi.action http_mt fd fd_status);
+    (match Curl.Multi.remove_finished http_mt with
+    | Some (http, code) ->
+       ( match List.assoc http !notify_removals with
+       | exception Not_found -> ()
+       | notify_function ->
+         let () = notify_function () in
+         notify_removals := List.remove_assoc http !notify_removals;
+       )
+    | None -> ()
+    );
     true
   in
   Curl.Multi.set_socket_function http_mt (
@@ -56,11 +75,14 @@ let make_http_mt () =
 	  | POLL_OUT		    -> [`OUT]
 	  | POLL_INOUT		    -> [`IN; `OUT]
       in
-      if Hashtbl.mem http_mt_fds fd then
+      let was_member = Hashtbl.mem http_mt_fds fd in
+      if was_member then
 	GMain.Io.remove (Hashtbl.find http_mt_fds fd);
       Hashtbl.remove http_mt_fds fd;
       match gtk_cond_of_curl_poll poll with
-      | [] -> (* OK, we're done here *) ()
+      | [] ->
+         (* OK, we're done here *)
+         ()
       | cond ->
 	let id =
 	  GMain.Io.add_watch
@@ -81,7 +103,11 @@ let make_http_mt () =
       if ms >= 0 then
 	timeout_id := Some (GMain.Timeout.add ~ms ~callback:timer_callback);
   );
-  http_mt
+  let interface = object
+    method multi = http_mt
+    method notify_removal_of http notify_function = notify_removals := (http, notify_function) :: !notify_removals
+  end in
+  interface
 
 let main () =
   let http_mt = make_http_mt () in

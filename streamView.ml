@@ -15,25 +15,22 @@ let header_finished received_data boundary_decoder http header =
 
 let start_http ~on_eof http_mt url process =
   let http = Curl.init () in
+  Curl.set_debugfunction http (fun _ _ str -> Printf.fprintf stderr "curl: %s\n%!" str);
+  http_mt#notify_removal_of http (fun _ -> on_eof ());
   let header = ref [] in
   Curl.set_url http url;
   let boundary_decoder = ref (fun _ -> assert false) in
+  Curl.set_failonerror http true;
   Curl.set_writefunction http (fun str ->
-    if String.length str = 0 then (
-      Printf.fprintf stderr "StreamView: EOF at %s\n%!" url;
-      on_eof ();
-      0
-    ) else (
-      try
+    try
         (* Printf.printf "%d bytes\n%!" (String.length str) (\* str *\); *)
-        let decoder = BoundaryDecoder.feed_decoder (!boundary_decoder ()) str 0 (String.length str) in
-        boundary_decoder := (fun () -> decoder);
-        String.length str
-      with exn ->
-        Printf.fprintf stderr "StreamView: uncaught exception: %s\n%!" (Printexc.to_string exn);
-        Printexc.print_backtrace stdout;
-        0
-    );
+      let decoder = BoundaryDecoder.feed_decoder (!boundary_decoder ()) str 0 (String.length str) in
+      boundary_decoder := (fun () -> decoder);
+      String.length str
+    with exn ->
+      Printf.fprintf stderr "StreamView: uncaught exception: %s\n%!" (Printexc.to_string exn);
+      Printexc.print_backtrace stdout;
+      0
   );
   let receive_header = ref (fun _ -> assert false) in
   let rec receive_http_header str =
@@ -53,7 +50,7 @@ let start_http ~on_eof http_mt url process =
       !receive_header trimmed_str;
       String.length str
   );
-  Curl.Multi.add http_mt http
+  Curl.Multi.add http_mt#multi http
 
 let view ?packing config source http_mt () =
   let url = source.source_url in

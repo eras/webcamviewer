@@ -25,7 +25,7 @@ The following command should bring the OCaml dependencies if you have opam insta
 
 Then compiling is done by:
 
-	ocamlbuild -use-ocamlfind webcamViewer.native
+	ocamlbuild webcamViewer.native
 
 And install:
 
@@ -34,6 +34,13 @@ And install:
 Setting up
 ----------
 
-Put the urls to ~/.webcamviewer. One line per url. For example:
+The configuration is written to ~/.webcamviewer in the traditional Windows format:
 
-	http://admin:admin@foscam1/videostream.cgi
+	[general]
+	output="/mnt/data/cameras"
+	
+	[cam1]
+	url="http://admin:admin@foscam1/videostream.cgi"
+	
+	[cam2]
+	url="http://admin:admin@foscam2/videostream.cgi"

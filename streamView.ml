@@ -13,7 +13,8 @@ let header_finished received_data boundary_decoder http header =
   boundary_decoder := (fun () -> decoder);
   ()
 
-let start_http ~on_eof http_mt http url process =
+let start_http ~on_eof http_mt url process =
+  let http = Curl.init () in
   let header = ref [] in
   Curl.set_url http url;
   let boundary_decoder = ref (fun _ -> assert false) in
@@ -92,7 +93,7 @@ let view ?packing config source http_mt () =
   ignore (drawing_area#event#connect#button_press (when_button 3 popup_menu_button_press));
   ignore (drawing_area#event#connect#button_press (when_button 1 fullscreen_window));
   drawing_area#event#add [`BUTTON_PRESS];
-  let received_data config source interface http (data : BoundaryDecoder.data) =
+  let received_data config source interface (data : BoundaryDecoder.data) =
     show_exn @@ fun () ->
       let content_length = int_of_string (List.assoc "Content-Length" data.data_header) in
         (* Printf.printf "Received data (%d/%d bytes)\n%!" (String.length data.data_content) content_length; *)
@@ -114,11 +115,10 @@ let view ?packing config source http_mt () =
 	 ()
   in
   let rec start () =
-    let http = Curl.init () in
     let on_eof () =
       start ()
     in
-    start_http ~on_eof http_mt http url (received_data config source interface http)
+    start_http ~on_eof http_mt url (received_data config source interface)
   in
   start ();
   drawing_area

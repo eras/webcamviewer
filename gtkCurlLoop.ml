@@ -1,6 +1,3 @@
-open Batteries
-open Common
-
 let string_of_cond = function
   | `ERR -> "ERR"
   | `HUP -> "HUP"

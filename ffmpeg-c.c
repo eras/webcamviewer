@@ -107,8 +107,23 @@ value
 ffmpeg_close(value ctx_)
 {
   CAMLparam1(ctx_);
-  struct Context* ctx = (void*) ctx_; 
- av_write_trailer(ctx->outputCtx);
+  struct Context* ctx = (void*) ctx_;
+
+  if (ctx->stream->codec->flags & AV_CODEC_CAP_DELAY) {
+    int gotIt;
+    AVPacket packet = { 0 };
+    do {
+      int ret = avcodec_encode_video2(ctx->stream->codec, &packet, NULL, &gotIt);
+      assert(ret >= 0);
+      if (gotIt) {
+        packet.stream_index = 0;
+        ret = av_interleaved_write_frame(ctx->outputCtx, &packet);
+        assert(ret >= 0);
+      }
+    } while (gotIt);
+  }
+
+  av_write_trailer(ctx->outputCtx);
   avcodec_close(ctx->stream->codec);
   avformat_free_context(ctx->outputCtx);
   sws_freeContext(ctx->swsCtx);

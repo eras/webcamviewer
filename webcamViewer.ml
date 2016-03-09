@@ -48,7 +48,6 @@ let main () =
   let main_window = GWindow.window ~border_width:10 () in
   Gobject.set GtkBaseProps.Window.P.allow_shrink main_window#as_window true;
   let vbox = GPack.vbox ~packing:main_window#add () in
-  let quit_button = GButton.button ~label:"Quit" ~packing:(vbox#pack ~expand:false) () in
   match read_config_file () with
   | Some config ->
     let views = List.map (fun source -> StreamView.view config source http_mt ~packing:vbox#add ()) config.config_sources in
@@ -56,7 +55,6 @@ let main () =
     main_window#show ();
     let destroy () = finish controls GMain.Main.quit in
     ignore (main_window#connect#destroy ~callback:destroy);
-    ignore (quit_button#connect#clicked ~callback:destroy);
     GMain.Main.main ()
   | None ->
      ()

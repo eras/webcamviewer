@@ -5,5 +5,6 @@ val view :
   < multi : Curl.Multi.mt;
     notify_removal_of : Curl.t -> (unit -> unit) -> unit > ->
   unit ->
-  GMisc.drawing_area
-    
+  < drawing_area: GMisc.drawing_area;
+    finish : (unit -> unit) -> unit;
+  >

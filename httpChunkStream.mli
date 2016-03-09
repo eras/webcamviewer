@@ -9,4 +9,4 @@ val start :
     .. > ->
   string ->
   (BoundaryDecoder.data -> unit) ->
-  unit
+  < finish : (unit -> unit) -> unit >

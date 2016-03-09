@@ -177,12 +177,22 @@ let view ?packing config source http_mt () =
       | None ->
 	 ()
   in
+  let http_control = ref None in
   let rec start () =
-    let on_eof () =
-      start ()
-    in
-    HttpChunkStream.start ~on_eof http_mt url (received_data config source interface)
+    let on_eof () = start () in
+    http_control := Some (HttpChunkStream.start ~on_eof http_mt url (received_data config source interface))
   in
   start ();
-  drawing_area
-
+  object
+    method drawing_area = drawing_area
+    method finish callback =
+      ( match !save_images with
+        | None -> ()
+        | Some save ->
+          Printf.printf "Stopping save%!\n";
+          Save.stop save;
+          save_images := None );
+      match !http_control with
+      | None -> callback ()
+      | Some http_control -> http_control#finish callback
+  end

@@ -50,5 +50,10 @@ let start ~on_eof http_mt url process =
       !receive_header trimmed_str;
       String.length str
   );
-  Curl.Multi.add http_mt#multi http
+  Curl.Multi.add http_mt#multi http;
+  object
+    method finish callback =
+      Curl.Multi.remove http_mt#multi http;
+      callback ()
+  end
 

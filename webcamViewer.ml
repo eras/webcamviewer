@@ -1,14 +1,6 @@
 open Batteries
 open Common
 
-let destroy () =
-  GMain.Main.quit ()
-
-(* let read_config_file () = *)
-(*   let open Config_file in *)
-(*   let config_file = create_options_file (Unix.getenv "HOME" ^ "/.webcamviewer2") in *)
-(*   let streams = new group  *)
-
 module List_of_Map (Map: Legacy.Map.S) =
 struct
   let map m = Map.fold (fun (key : Map.key) value xs -> (key, value)::xs) m [] |> List.rev
@@ -46,20 +38,26 @@ let read_config_file () =
      Some config
 
 (* let read_streams () = File.lines_of (Unix.getenv "HOME" ^ "/.webcamviewer") |> List.of_enum *)
+let rec finish controls callback =
+  match controls with
+  | [] -> callback ()
+  | x::xs -> x#finish (fun () -> finish xs callback)
 
 let main () =
   let http_mt = GtkCurlLoop.make () in
   let main_window = GWindow.window ~border_width:10 () in
   Gobject.set GtkBaseProps.Window.P.allow_shrink main_window#as_window true;
-  ignore (main_window#connect#destroy ~callback:destroy);
   let vbox = GPack.vbox ~packing:main_window#add () in
   let quit_button = GButton.button ~label:"Quit" ~packing:(vbox#pack ~expand:false) () in
-  ignore (quit_button#connect#clicked ~callback:destroy);
   match read_config_file () with
   | Some config ->
-     List.iter (fun source -> ignore (StreamView.view config source http_mt ~packing:vbox#add ())) config.config_sources;
-     main_window#show ();
-     GMain.Main.main ()
+    let views = List.map (fun source -> StreamView.view config source http_mt ~packing:vbox#add ()) config.config_sources in
+    let controls = List.map (fun view -> (view :> Finish.finish)) views in
+    main_window#show ();
+    let destroy () = finish controls GMain.Main.quit in
+    ignore (main_window#connect#destroy ~callback:destroy);
+    ignore (quit_button#connect#clicked ~callback:destroy);
+    GMain.Main.main ()
   | None ->
      ()
 

@@ -87,7 +87,7 @@ ffmpeg_open(value filename_, value width_, value height_)
   ret = avcodec_open2(ctx->stream->codec, codec, &codecOpts);
   assert(ret >= 0);
   
-(ctx->stream->codec->pix_fmt == AV_PIX_FMT_YUV420P);
+  assert(ctx->stream->codec->pix_fmt == AV_PIX_FMT_YUV420P);
                
   ret = avio_open(&ctx->outputCtx->pb, (char*) filename_, AVIO_FLAG_WRITE);
   assert(ret >= 0);

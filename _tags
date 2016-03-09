@@ -2,5 +2,6 @@
 <*>: package(toml)
 <*>: debug, bin_annot
 <*>: use_turbojpeg
+<*>: use_ffmpeg
 <*>: no_warn_40
 

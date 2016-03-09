@@ -108,6 +108,16 @@ let make_filename config source now =
   in
   find_available 0
 
+let saving_overlay cr image =
+  match image with
+  | None -> ()
+  | Some (_, image_width, image_height) ->
+    let (im_width, im_height) = (float image_width, float image_height) in
+    let open Cairo in
+    set_source_rgb cr ~r:1.0 ~g:0.0 ~b:0.0;
+    arc cr (im_width -. 10.0) (10.0) 5.0 0. pi2;
+    fill cr
+
 let view ?packing config source http_mt () =
   let url = source.source_url in
   let save_images = ref None in
@@ -121,11 +131,13 @@ let view ?packing config source http_mt () =
         "Save off", (
           fun () ->
             Save.stop save;
+            interface#set_overlay (fun _ _ -> ());
             save_images := None
         )
       | None ->
          "Save on", (
            fun () ->
+             interface#set_overlay saving_overlay;
              save_images := Some (Save.start (make_filename config source))
          )
     in

@@ -17,16 +17,18 @@ You need OCaml 4.01.0 and the following OCaml libraries, all easily acquired wit
 * toml
 
 In addition you need libturbojpeg development headers (and library)
-installed. Tested with Debian Unstable's libturbojpeg1-dev 1.3.0..
+installed. Tested with Debian Unstable's libturbojpeg1-dev
+1.3...
+
+WebcamViewer now uses FFmpeg for saving video streams while the
+TurboJPEG-code hasn't been removed yet, so you will need
+libavcodec-dev libavformat-dev libswscale-dev libavutil-dev as well.
+
+	apt-get install libturbojpeg1-dev libavcodec-dev libavformat-dev libswscale-dev libavutil-dev
 
 The following command should bring the OCaml dependencies if you have opam installed:
 
-	opam install lablgtk ocurl pcre-ocaml batteries cairo2
-
-Also as the code hasn't yet been updated to work with Toml 2, the
-following needs to be configured:
-
-	opam pin add toml 1.0.0
+	opam install lablgtk ocurl pcre-ocaml batteries cairo2 toml
 
 Then compiling is done by:
 

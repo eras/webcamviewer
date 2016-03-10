@@ -11,22 +11,18 @@ type t = {
   mutable context : context option;
   mutable prev_frame_time : float option;
   make_filename : float -> string;
+  frame_time : float -> float;
 }
 
-let start make_filename =
+let start ~make_filename ~frame_time =
   { context = None;
     make_filename;
-    prev_frame_time = None }
-
-let seconds_from_midnight now =
-  let tm = Unix.localtime now in
-  float (tm.Unix.tm_hour * 3600 +
-           tm.Unix.tm_min * 60 +
-           tm.Unix.tm_sec) +. fst (modf now)
+    prev_frame_time = None;
+    frame_time = frame_time }
 
 let save t (image, width, height) =
   let now = Unix.gettimeofday () in
-  let frame_time = seconds_from_midnight @@ now in
+  let frame_time = t.frame_time @@ now in
   let ctx = match t.context with
     | None ->
       let ctx = {
@@ -43,7 +39,7 @@ let save t (image, width, height) =
     | Some ctx -> ctx
   in
   t.prev_frame_time <- Some frame_time;
-  let frame = FFmpeg.new_frame ctx.ffmpeg Int64.(of_float (frame_time *. 10000.0)) in
+  let frame = FFmpeg.new_frame ctx.ffmpeg frame_time in
   let frame_buf = FFmpeg.frame_buffer frame in
 
   for y = 0 to height - 1 do

@@ -2,7 +2,7 @@ type t
 
 (** [start make_filename] starts saving. make_filename returns the
     file name to be used for a given unix epoch time. *)
-val start : (float -> string) -> t
+val start : make_filename : (float -> string) -> frame_time : (float -> float) -> t
 
 (** [save t (image, width, height) Saves an 0x00rrggbb image to the stream *)
 val save :

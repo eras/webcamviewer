@@ -16,17 +16,35 @@ let reorder array =
     c := !c + 4
   done
 
+let string_of_date { Unix.tm_mday = mday;
+                    tm_mon = mon;
+                    tm_year = year } =
+  Printf.sprintf
+    "%04d-%02d-%02d"
+    (year + 1900)
+    (mon + 1)
+    (mday)
+
 let make_filename config source now =
   let rec find_available number =
     let directory = Printf.sprintf "%s/%s" config.config_output_base source.source_name in
     Utils.mkdir_rec directory;
-    let filename = Printf.sprintf "%s/%s-%04d.mp4" directory (Common.string_of_date (Unix.localtime now)) number in
+    let filename = Printf.sprintf "%s/%s-%04d.mp4" directory (string_of_date (Unix.localtime now)) number in
     if Sys.file_exists filename then
       find_available (number + 1)
     else
       filename
   in
   find_available 0
+
+let seconds_from_midnight now =
+  let tm = Unix.localtime now in
+  float (tm.Unix.tm_hour * 3600 +
+           tm.Unix.tm_min * 60 +
+           tm.Unix.tm_sec) +. fst (modf now)
+
+let make_frame_time time =
+  seconds_from_midnight time
 
 let saving_overlay cr image =
   match image with
@@ -58,7 +76,7 @@ let view ?packing config source http_mt () =
          "Save on", (
            fun () ->
              interface#set_overlay saving_overlay;
-             save_images := Some (Save.start (make_filename config source))
+             save_images := Some (Save.start (make_filename config source) make_frame_time)
          )
     in
     let menuItem = GMenu.menu_item ~label:label ~packing:menu#append () in

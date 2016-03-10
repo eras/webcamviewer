@@ -45,15 +45,6 @@ let path_of_tm { Unix.tm_sec = sec;
     (mday)
     (hour)
 
-let string_of_date { Unix.tm_mday = mday;
-                    tm_mon = mon;
-                    tm_year = year } =
-  Printf.sprintf
-    "%04d-%02d-%02d"
-    (year + 1900)
-    (mon + 1)
-    (mday)
-
 let path_of_time t = path_of_tm (Unix.localtime t)
 
 let trim_crnl str =

@@ -16,20 +16,24 @@ let reorder array =
     c := !c + 4
   done
 
-let string_of_date { Unix.tm_mday = mday;
-                    tm_mon = mon;
-                    tm_year = year } =
-  Printf.sprintf
-    "%04d-%02d-%02d"
-    (year + 1900)
-    (mon + 1)
-    (mday)
-
 let make_filename config source now =
   let rec find_available number =
     let directory = Printf.sprintf "%s/%s" config.config_output_base source.source_name in
     Utils.mkdir_rec directory;
-    let filename = Printf.sprintf "%s/%s-%04d.mp4" directory (string_of_date (Unix.localtime now)) number in
+    let time_str =
+      let { Unix.tm_mday = mday;
+            tm_mon       = mon;
+            tm_year      = year;
+            tm_hour      = hour} = Unix.localtime now
+      in
+      Printf.sprintf
+        "%04d-%02d-%02d-%02d"
+        (year + 1900)
+        (mon + 1)
+        (mday)
+        (hour)
+    in
+    let filename = Printf.sprintf "%s/%s--%04d.mp4" directory time_str number in
     if Sys.file_exists filename then
       find_available (number + 1)
     else
@@ -43,8 +47,13 @@ let seconds_from_midnight now =
            tm.Unix.tm_min * 60 +
            tm.Unix.tm_sec) +. fst (modf now)
 
+let seconds_from_hour now =
+  let tm = Unix.localtime now in
+  float (tm.Unix.tm_min * 60 +
+         tm.Unix.tm_sec) +. fst (modf now)
+
 let make_frame_time time =
-  seconds_from_midnight time
+  seconds_from_hour time
 
 let saving_overlay cr image =
   match image with

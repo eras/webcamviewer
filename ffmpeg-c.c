@@ -183,7 +183,7 @@ ffmpeg_frame_new(value ctx_, value pts_)
 {
   CAMLparam2(ctx_, pts_);
   struct Context* ctx = (void*) ctx_;
-  int64_t pts = Int64_val(pts_);
+  double pts = Double_val(pts_);
   AVFrame* frame = av_frame_alloc();
   frame->format = USER_PIXFORMAT; // 0xrrggbbaa
   frame->width = ctx->width;
@@ -196,7 +196,7 @@ ffmpeg_frame_new(value ctx_, value pts_)
   ret = av_frame_make_writable(frame);
   assert(ret >= 0);
 
-  frame->pts = pts;
+  frame->pts = pts = (int64_t) (ctx->stream->time_base.den * pts);
 
   CAMLreturn((value) frame);
 }

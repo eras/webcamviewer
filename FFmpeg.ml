@@ -1,5 +1,5 @@
 type context
-type pts = Int64.t
+type pts = float
 type width = int
 type height = int
 type frame

@@ -5,4 +5,6 @@ PKG batteries
 PKG lablgtk2
 PKG cairo2
 PKG toml
+PKG threads
 FLG -w -40
+B +threads

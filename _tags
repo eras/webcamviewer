@@ -1,4 +1,4 @@
-<*>: package(lablgtk2), package(lablgtk2.auto-init), package(curl), package(pcre), package(batteries), package(cairo2), package(cairo2.lablgtk2)
+<*>: package(lablgtk2), package(lablgtk2.auto-init), package(curl), package(pcre), package(batteries), package(cairo2), package(cairo2.lablgtk2), thread
 <*>: package(toml)
 <*>: debug, bin_annot
 <*>: use_turbojpeg

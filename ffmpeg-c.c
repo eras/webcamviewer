@@ -51,10 +51,10 @@ ffmpeg_create(value filename_)
   CAMLparam1(filename_);
 
   av_register_all(); // this is fast to redo
-  
+
   struct Context* ctx = malloc(sizeof(struct Context));
   ctx->filename = strdup((char*) filename_);
-    
+
   int ret;
   caml_enter_blocking_section();
   ret = avformat_alloc_output_context2(&ctx->outputCtx, NULL, NULL, (char*) filename_);
@@ -119,12 +119,12 @@ ffmpeg_write(value stream_, value rgbaFrame_)
   yuvFrame->pts = rgbaFrame->pts;
 
   caml_enter_blocking_section();
-    
+
   sws_scale(stream->swsCtx,
             (const uint8_t * const *) rgbaFrame->data,
             rgbaFrame->linesize,
             0, stream->avstream->codec->height, yuvFrame->data, yuvFrame->linesize);
-    
+
   AVPacket packet = { 0 };
   av_init_packet(&packet);
   int gotIt = 0;

@@ -21,19 +21,16 @@ let make_filename config source now =
     let directory = Printf.sprintf "%s/%s" config.config_output_base source.source_name in
     Utils.mkdir_rec directory;
     let time_str =
-      let { Unix.tm_mday = mday;
-            tm_mon       = mon;
-            tm_year      = year;
-            tm_hour      = hour} = Unix.localtime now
-      in
+      let tm = Unix.localtime now in
       Printf.sprintf
-        "%04d-%02d-%02d-%02d"
-        (year + 1900)
-        (mon + 1)
-        (mday)
-        (hour)
+        "%04d-%02d-%02d_%02d-%02d"
+        (tm.tm_year + 1900)
+        (tm.tm_mon + 1)
+        (tm.tm_mday)
+        (tm.tm_hour)
+        tm.tm_min
     in
-    let filename = Printf.sprintf "%s/%s--%04d.mp4" directory time_str number in
+    let filename = Printf.sprintf "%s/%s__%04d.mp4" directory time_str number in
     if Sys.file_exists filename then
       find_available (number + 1)
     else

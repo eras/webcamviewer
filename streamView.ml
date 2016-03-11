@@ -128,8 +128,12 @@ let view ~work_queue ?packing config source http_mt () =
       (match !save_images with
        | None -> ()
        | Some save ->
-         WorkQueue.async work_queue @@ fun () ->
-         Save.save save (rgb_data, width, height) );
+         if WorkQueue.queue_length work_queue < 20 then
+           WorkQueue.async work_queue @@ fun () ->
+           Save.save save (rgb_data, width, height)
+         else
+           Printf.eprintf "Warning: too much pending work, skipping frames\n%!"
+      );
       (* let _ = reorder rgb_data in *)
       let image = Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 width height, width, height) in
       GtkThread.async (fun () ->

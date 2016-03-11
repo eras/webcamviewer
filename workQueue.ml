@@ -3,6 +3,7 @@ open Batteries
 type queue = {
   mutex           : Mutex.t;
   work_available  : Semaphore.t;
+  work_pending    : int ref;
   work            : (unit -> unit) option Queue.t;
 }
 
@@ -16,6 +17,7 @@ let worker (queue : queue) =
     Semaphore.down queue.work_available;
     Mutex.lock queue.mutex;
     let work = Queue.pop queue.work in
+    decr queue.work_pending;
     Mutex.unlock queue.mutex;
     match work with
     | None -> `Fin
@@ -35,6 +37,7 @@ let create : int -> t =
       mutex          = Mutex.create ();
       work_available = Semaphore.create 0;
       work           = Queue.create ();
+      work_pending   = ref 0;
     } in
     let threads =
       (0 --^ n_threads)
@@ -58,6 +61,7 @@ let async : t -> (unit -> unit) -> unit =
     Mutex.lock t.queue.mutex;
     Queue.add (Some work) t.queue.work;
     Semaphore.up t.queue.work_available;
+    incr t.queue.work_pending;
     Mutex.unlock t.queue.mutex
 
 let sync : t -> (unit -> 'result) -> 'result =
@@ -65,3 +69,10 @@ let sync : t -> (unit -> 'result) -> 'result =
     let msg = Event.new_channel () in
     async t (fun () -> Event.sync (Event.send msg (work ())));
     Event.sync (Event.receive msg)
+
+let queue_length : t -> int =
+  fun t ->
+    Mutex.lock t.queue.mutex;
+    let v = !(t.queue.work_pending) in
+    Mutex.unlock t.queue.mutex;
+    v

@@ -8,4 +8,6 @@ val async : t -> (unit -> unit) -> unit
 val sync : t -> (unit -> 'result) -> 'result
 
 val finish : t -> unit
-    
+
+val queue_length : t -> int
+

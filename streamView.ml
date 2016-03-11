@@ -62,7 +62,8 @@ let saving_overlay cr image =
     arc cr (im_width -. 10.0) (10.0) 5.0 0. pi2;
     fill cr
 
-let view ?packing config source http_mt () =
+let view ~work_queue ?packing config source http_mt () =
+  let worker = SingleWorker.create work_queue in
   let url = source.source_url in
   let save_images = ref None in
   let (drawing_area, interface) = ImageView.view ?packing () in
@@ -118,20 +119,25 @@ let view ?packing config source http_mt () =
   ignore (drawing_area#event#connect#button_press (when_button 1 fullscreen_window));
   drawing_area#event#add [`BUTTON_PRESS];
   let received_data config source interface (data : BoundaryDecoder.data) =
+    SingleWorker.submit worker @@ fun () ->
     show_exn @@ fun () ->
-      match Jpeg.decode_int Jpeg.rgb4 (Jpeg.array_of_string data.data_content) with
-      | Some jpeg_image ->
-	 let (width, height) = (jpeg_image.Jpeg.image_width, jpeg_image.Jpeg.image_height) in
-	 let rgb_data = jpeg_image.Jpeg.image_data in
-         (match !save_images with
-         | None -> ()
-         | Some save -> Save.save save (rgb_data, width, height));
-         let _ = reorder rgb_data in
-         let image = Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 width height, width, height) in
-         interface#set_image image;
-         Option.may (fun (_, (_, interface)) -> interface#set_image image) !fullscreen;
-      | None ->
-	 ()
+    match Jpeg.decode_int Jpeg.rgb4 (Jpeg.array_of_string data.data_content) with
+    | Some jpeg_image ->
+      let (width, height) = (jpeg_image.Jpeg.image_width, jpeg_image.Jpeg.image_height) in
+      let rgb_data = jpeg_image.Jpeg.image_data in
+      (match !save_images with
+       | None -> ()
+       | Some save ->
+         WorkQueue.async work_queue @@ fun () ->
+         Save.save save (rgb_data, width, height) );
+      (* let _ = reorder rgb_data in *)
+      let image = Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 width height, width, height) in
+      GtkThread.async (fun () ->
+          interface#set_image image;
+          Option.may (fun (_, (_, interface)) -> interface#set_image image) !fullscreen)
+        ()
+    | None ->
+      ()
   in
   let http_control = ref None in
   let rec start () =

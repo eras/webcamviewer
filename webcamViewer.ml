@@ -50,12 +50,13 @@ let main () =
   let vbox = GPack.vbox ~packing:main_window#add () in
   match read_config_file () with
   | Some config ->
-    let views = List.map (fun source -> StreamView.view config source http_mt ~packing:vbox#add ()) config.config_sources in
+    let work_queue = WorkQueue.create 4 in
+    let views = List.map (fun source -> StreamView.view ~work_queue config source http_mt ~packing:vbox#add ()) config.config_sources in
     let controls = List.map (fun view -> (view :> Finish.finish)) views in
     main_window#show ();
     let destroy () = finish controls GMain.Main.quit in
     ignore (main_window#connect#destroy ~callback:destroy);
-    GMain.Main.main ()
+    GtkThread.main ()
   | None ->
      ()
 

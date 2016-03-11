@@ -1,4 +1,5 @@
 val view :
+  work_queue:WorkQueue.t ->
   ?packing:(GObj.widget -> unit) ->
   Common.config ->
   Common.source ->

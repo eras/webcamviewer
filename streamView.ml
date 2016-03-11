@@ -65,8 +65,9 @@ let saving_overlay cr image =
 
 let view ~work_queue ?packing config source http_mt () =
   let worker = SingleWorker.create work_queue in
+  let ordered_worker = OrderedWorkQueue.create work_queue in
   let url = source.source_url in
-  let save_images = ref None in
+  let save_images = ref None in (* only accessed from within ordered worker tasks.. except in the popup menu *)
   let (drawing_area, interface) = ImageView.view ?packing () in
   let fullscreen = ref None in
   let popup_menu_button_press ev =
@@ -76,16 +77,22 @@ let view ~work_queue ?packing config source http_mt () =
       | Some save ->
         "Save off", (
           fun () ->
-            Save.stop save;
             interface#set_overlay (fun _ _ -> ());
-            save_images := None
+
+            OrderedWorkQueue.submit ordered_worker ( fun () ->
+                Save.stop save;
+                save_images := None
+              )
         )
       | None ->
-         "Save on", (
-           fun () ->
-             interface#set_overlay saving_overlay;
-             save_images := Some (Save.start (make_filename config source) make_frame_time)
-         )
+        "Save on", (
+          fun () ->
+            interface#set_overlay saving_overlay;
+
+            OrderedWorkQueue.submit ordered_worker (fun () ->
+                save_images := Some (Save.start (make_filename config source) make_frame_time)
+              )
+        )
     in
     let menuItem = GMenu.menu_item ~label:label ~packing:menu#append () in
     ignore (menuItem#connect#activate ~callback:action);
@@ -97,23 +104,23 @@ let view ~work_queue ?packing config source http_mt () =
       match !fullscreen with
       | None -> false
       | Some (window, _) ->
-         window#destroy ();
-         fullscreen := None;
-         true
+        window#destroy ();
+        fullscreen := None;
+        true
     in
     ( match !fullscreen with
       | None ->
-         let w = GWindow.window () in
-         w#show ();
-         w#maximize ();
-         let (drawing_area, interface) = ImageView.view ~packing:w#add () in
-         fullscreen := Some (w, (drawing_area, interface));
-         
-         drawing_area#event#add [`BUTTON_PRESS];
-         ignore (drawing_area#event#connect#button_press fullscreen_close);
-         ignore (w#event#connect#delete fullscreen_close);
+        let w = GWindow.window () in
+        w#show ();
+        w#maximize ();
+        let (drawing_area, interface) = ImageView.view ~packing:w#add () in
+        fullscreen := Some (w, (drawing_area, interface));
+
+        drawing_area#event#add [`BUTTON_PRESS];
+        ignore (drawing_area#event#connect#button_press fullscreen_close);
+        ignore (w#event#connect#delete fullscreen_close);
       | Some _ ->
-         () );
+        () );
     true
   in
   ignore (drawing_area#event#connect#button_press (when_button 3 popup_menu_button_press));
@@ -126,15 +133,19 @@ let view ~work_queue ?packing config source http_mt () =
     | Some jpeg_image ->
       let (width, height) = (jpeg_image.Jpeg.image_width, jpeg_image.Jpeg.image_height) in
       let rgb_data = jpeg_image.Jpeg.image_data in
-      (match !save_images with
-       | None -> ()
-       | Some save ->
-         if WorkQueue.queue_length work_queue < 20 then
-           WorkQueue.async work_queue @@ fun () ->
-           Save.save save (rgb_data, width, height)
-         else
-           Printf.eprintf "Warning: too much pending work, skipping frames\n%!"
-      );
+      let () =
+        try
+          OrderedWorkQueue.submit ordered_worker @@ fun () ->
+          match !save_images with
+          | None -> ()
+          | Some save ->
+            if WorkQueue.queue_length work_queue < 20 then
+              if !save_images <> None then (
+                Save.save save (rgb_data, width, height);
+              ) else
+                Printf.eprintf "Warning: too much pending work, skipping frames\n%!"
+        with OrderedWorkQueue.Closed -> () (* ok.. *)
+      in
       (* let _ = reorder rgb_data in *)
       let image = Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 width height, width, height) in
       GtkThread.async (fun () ->
@@ -153,13 +164,19 @@ let view ~work_queue ?packing config source http_mt () =
   object
     method drawing_area = drawing_area
     method finish callback =
+      ( match !http_control with
+        | None -> fun x -> x ()
+        | Some http_control ->
+          http_control#finish ) @@ fun () ->
       ( match !save_images with
-        | None -> ()
+        | None -> fun continue -> continue ()
         | Some save ->
-          Printf.printf "Stopping save%!\n";
-          Save.stop save;
-          save_images := None );
-      match !http_control with
-      | None -> callback ()
-      | Some http_control -> http_control#finish callback
+          fun continue ->
+            OrderedWorkQueue.submit ordered_worker (fun () ->
+                Save.stop save;
+                save_images := None;
+              );
+            OrderedWorkQueue.finish ordered_worker;
+            continue ()
+      ) callback
   end

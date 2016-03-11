@@ -92,7 +92,9 @@ jpeg_decode(value pixel_format, value frame)
   if (setjmp(custom_dec.decode_env) == 0) {
     jpeg_read_header(dec, TRUE);
 
+    caml_enter_blocking_section();
     jpeg_start_decompress(dec);
+    caml_leave_blocking_section();
 
     int bytes_per_pixel = Int_val(Field(pixel_format, 0));
 
@@ -106,6 +108,7 @@ jpeg_decode(value pixel_format, value frame)
     JSAMPLE* buffer = begin;
     const JSAMPLE* end = (void*) (((char*) Data_bigarray_val(rgb_data)) + size);
 
+    caml_enter_blocking_section();
     if (setjmp(custom_dec.decode_env) == 0) {
       switch (bytes_per_pixel) {
       case 3: {
@@ -135,6 +138,7 @@ jpeg_decode(value pixel_format, value frame)
       } break;
       }
       jpeg_finish_decompress(dec);
+      caml_leave_blocking_section();
     } else {
       // uh oh. well, just keep on going and zero the rest.
       printf("decoding error\n");

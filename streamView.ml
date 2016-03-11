@@ -3,15 +3,16 @@ open Common
 
 let reorder array =
   let c = ref 0 in
-  let size = Bigarray.Array1.dim array - 1 in
-  while !c < size do
-    let r = array.{!c + 0} in
+  let module A = Bigarray.Array1 in
+  let size = A.dim array - 1 in
+  while !c < size - 3 do
+    let r = A.unsafe_get array (!c + 0) in
     (* (\* let g = array.{!c + 1} in *\) *)
-    let b = array.{!c + 2} in
+    let b = A.unsafe_get array (!c + 2) in
 
-    array.{!c + 0} <- b;
+    A.unsafe_set array (!c + 0) b;
       (* (\* array.{!c + 1} <- g; *\) *)
-    array.{!c + 2} <- r;
+    A.unsafe_set array (!c + 2) r;
 
     c := !c + 4
   done

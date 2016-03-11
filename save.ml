@@ -3,6 +3,7 @@ open Common
     
 type context = {
   ffmpeg : FFmpeg.context;
+  stream : [`Video] FFmpeg.stream;
   width  : int;
   height : int;
 }
@@ -25,21 +26,25 @@ let save t (image, width, height) =
   let frame_time = t.frame_time @@ now in
   let ctx = match t.context with
     | None ->
-      let ctx = {
-        ffmpeg = FFmpeg.open_ (t.make_filename now) width height;
-        width; height;
-      } in
+      let ffmpeg = FFmpeg.create (t.make_filename now) in
+      let stream = FFmpeg.new_stream ffmpeg FFmpeg.(Video { v_width = width; v_height = height }) in
+      let () = FFmpeg.open_ ffmpeg in
+      let ctx = {ffmpeg; stream; width; height;} in
       t.context <- Some ctx;
       ctx
     | Some ctx when Some frame_time < t.prev_frame_time || ctx.width != width || ctx.height != ctx.height ->
+      FFmpeg.close_stream ctx.stream;
       FFmpeg.close ctx.ffmpeg;
-      let ctx = { ctx with ffmpeg = FFmpeg.open_ (t.make_filename now) ctx.width height } in
+      let ffmpeg = FFmpeg.create (t.make_filename now) in
+      let stream = FFmpeg.new_stream ffmpeg FFmpeg.(Video { v_width = width; v_height = height }) in
+      let () = FFmpeg.open_ ffmpeg in
+      let ctx = { ctx with ffmpeg; stream } in
       t.context <- Some ctx;
       ctx
     | Some ctx -> ctx
   in
   t.prev_frame_time <- Some frame_time;
-  let frame = FFmpeg.new_frame ctx.ffmpeg frame_time in
+  let frame = FFmpeg.new_frame ctx.stream frame_time in
   let frame_buf = FFmpeg.frame_buffer frame in
 
   for y = 0 to height - 1 do
@@ -58,10 +63,12 @@ let save t (image, width, height) =
       src := !src + 4;
     done;
   done;
-  FFmpeg.write ctx.ffmpeg frame;
+  FFmpeg.write ctx.stream frame;
   FFmpeg.free_frame frame
 
 let stop t =
   match t.context with
   | None -> ()
-  | Some ctx -> FFmpeg.close ctx.ffmpeg
+  | Some ctx ->
+    FFmpeg.close_stream ctx.stream;
+    FFmpeg.close ctx.ffmpeg

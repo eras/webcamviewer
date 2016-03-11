@@ -1,15 +1,16 @@
 open Batteries
-open Ffmpeg
+open FFmpeg
 
 let main' () =
   demo ()
 
 let main () =
-  init ();
-  let ctx = open_ "foo.mp4" 640 480 in
+  let ctx = create "foo.mp4" in
+  let stream = new_stream ctx (Video { v_width = 640; v_height = 480 }) in
+  let (_ : unit) = open_ ctx in
   let _ = List.(0 -- 200) |> Enum.iter (
     fun n ->
-      let frame = new_frame ctx Int64.(of_int n * 100L) in
+      let frame = new_frame stream (float n) in
       let frame_buf = frame_buffer frame in
       let width = 640 in
       let fillbox x0 y0 x1 y1 color =
@@ -21,10 +22,11 @@ let main () =
       in
       fillbox 0 0 (640 - 1) (480 - 1) 0l;
       fillbox (n + 100) (100) (n + 200) (200) 0xffffffl;
-      write ctx frame;
+      write stream frame;
       free_frame frame;
       ()
-  ) in
+    ) in
+  close_stream stream;
   close ctx;
   ()
 

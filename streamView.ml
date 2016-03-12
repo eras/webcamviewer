@@ -152,7 +152,7 @@ let view ~work_queue ?packing config source http_mt () =
       show_exn @@ fun () ->
       if !rendering = 0 then (
         let rgb_data = reordered rgb_data in
-        Thread.delay 0.15;       (* Why.. *)
+        Thread.delay 0.2;       (* Why.. *)
         let image = Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 width height, width, height) in
         incr rendering;
         GtkThread.async (fun () ->

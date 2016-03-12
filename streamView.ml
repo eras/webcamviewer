@@ -129,6 +129,7 @@ let view ~work_queue ?packing config source http_mt () =
   ignore (drawing_area#event#connect#button_press (when_button 3 popup_menu_button_press));
   ignore (drawing_area#event#connect#button_press (when_button 1 fullscreen_window));
   drawing_area#event#add [`BUTTON_PRESS];
+  let rendering = ref 0 in
   let received_data config source interface (data : BoundaryDecoder.data) =
     SingleWorker.submit worker @@ fun () ->
     show_exn @@ fun () ->
@@ -149,14 +150,19 @@ let view ~work_queue ?packing config source http_mt () =
                 Printf.eprintf "Warning: too much pending work, skipping frames\n%!"
         with OrderedWorkQueue.Closed -> () (* ok.. *)
       in
-      let bgr_data = reordered rgb_data in
-      let image = Some (Cairo.Image.create_for_data8 bgr_data Cairo.Image.RGB24 width height, width, height) in
-      GtkThread.async (fun () ->
-          interface#set_image image;
-          Option.may (fun (_, (_, interface)) -> interface#set_image image) !fullscreen)
-        ()
-    | None ->
-      ()
+      if !rendering = 0 then (
+        let rgb_data = reordered rgb_data in
+        Thread.delay 0.15;       (* Why.. *)
+        let image = Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 width height, width, height) in
+        incr rendering;
+        GtkThread.async (fun () ->
+            interface#set_image image;
+            Option.may (fun (_, (_, interface)) -> interface#set_image image) !fullscreen;
+            decr rendering
+          )
+          ()
+      )
+    | None -> ()
   in
   let http_control = ref None in
   let rec start () =

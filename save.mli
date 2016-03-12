@@ -4,9 +4,10 @@ type t
     file name to be used for a given unix epoch time. *)
 val start : make_filename : (float -> string) -> frame_time : (float -> float) -> t
 
-(** [save t (image, width, height) Saves an 0x00rrggbb image to the stream *)
+(** [save t (Unix.gettimeofday ()) (image, width, height) Saves an 0x00rrggbb image to the stream *)
 val save :
   t ->
+  float ->
   (int, 'a, 'b) Batteries.Bigarray.Array1.t * FFmpeg.width * FFmpeg.height ->
   unit
 

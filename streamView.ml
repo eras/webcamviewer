@@ -131,19 +131,20 @@ let view ~work_queue ?packing config source http_mt () =
   drawing_area#event#add [`BUTTON_PRESS];
   let rendering = ref 0 in
   let received_data config source interface (data : BoundaryDecoder.data) =
+    let time = Unix.gettimeofday () in
+    OrderedWorkQueue.submit ordered_worker @@ fun () ->
     match Jpeg.decode_int Jpeg.rgb4 (Jpeg.array_of_string data.data_content) with
     | Some jpeg_image ->
       let (width, height) = (jpeg_image.Jpeg.image_width, jpeg_image.Jpeg.image_height) in
       let rgb_data = jpeg_image.Jpeg.image_data in
       let () =
         try
-          OrderedWorkQueue.submit ordered_worker @@ fun () ->
           match !save_images with
           | None -> ()
           | Some save ->
             if WorkQueue.queue_length work_queue < 20 then
               if !save_images <> None then (
-                Save.save save (rgb_data, width, height);
+                Save.save save time (rgb_data, width, height);
               ) else
                 Printf.eprintf "Warning: too much pending work, skipping frames\n%!"
         with OrderedWorkQueue.Closed -> () (* ok.. *)

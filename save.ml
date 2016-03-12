@@ -21,12 +21,11 @@ let start ~make_filename ~frame_time =
     prev_frame_time = None;
     frame_time = frame_time }
 
-let save t (image, width, height) =
-  let now = Unix.gettimeofday () in
-  let frame_time = t.frame_time @@ now in
+let save t time (image, width, height) =
+  let frame_time = t.frame_time @@ time in
   let ctx = match t.context with
     | None ->
-      let ffmpeg = FFmpeg.create (t.make_filename now) in
+      let ffmpeg = FFmpeg.create (t.make_filename time) in
       let stream = FFmpeg.new_stream ffmpeg FFmpeg.(Video { v_width = width; v_height = height }) in
       let () = FFmpeg.open_ ffmpeg in
       let ctx = {ffmpeg; stream; width; height;} in
@@ -35,7 +34,7 @@ let save t (image, width, height) =
     | Some ctx when Some frame_time < t.prev_frame_time || ctx.width != width || ctx.height != ctx.height ->
       FFmpeg.close_stream ctx.stream;
       FFmpeg.close ctx.ffmpeg;
-      let ffmpeg = FFmpeg.create (t.make_filename now) in
+      let ffmpeg = FFmpeg.create (t.make_filename time) in
       let stream = FFmpeg.new_stream ffmpeg FFmpeg.(Video { v_width = width; v_height = height }) in
       let () = FFmpeg.open_ ffmpeg in
       let ctx = { ctx with ffmpeg; stream } in

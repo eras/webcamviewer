@@ -1,21 +1,24 @@
 open Batteries
 open Common
 
-let reorder array =
+let reordered src =
   let c = ref 0 in
   let module A = Bigarray.Array1 in
-  let size = A.dim array - 1 in
+  let size = A.dim src - 1 in
+  let dst = A.create (A.kind src) (A.layout src) (A.dim src) in
   while !c < size - 3 do
-    let r = A.unsafe_get array (!c + 0) in
-    (* (\* let g = array.{!c + 1} in *\) *)
-    let b = A.unsafe_get array (!c + 2) in
+    let r = A.unsafe_get src (!c + 0) in
+    let g = A.unsafe_get src (!c + 1) in
+    let b = A.unsafe_get src (!c + 2) in
 
-    A.unsafe_set array (!c + 0) b;
-      (* (\* array.{!c + 1} <- g; *\) *)
-    A.unsafe_set array (!c + 2) r;
+    A.unsafe_set dst (!c + 0) b;
+    A.unsafe_set dst (!c + 1) g;
+    A.unsafe_set dst (!c + 2) r;
+    A.unsafe_set dst (!c + 3) 0;
 
     c := !c + 4
-  done
+  done;
+  dst
 
 let make_filename config source now =
   let rec find_available number =
@@ -146,8 +149,8 @@ let view ~work_queue ?packing config source http_mt () =
                 Printf.eprintf "Warning: too much pending work, skipping frames\n%!"
         with OrderedWorkQueue.Closed -> () (* ok.. *)
       in
-      (* let _ = reorder rgb_data in *)
-      let image = Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 width height, width, height) in
+      let bgr_data = reordered rgb_data in
+      let image = Some (Cairo.Image.create_for_data8 bgr_data Cairo.Image.RGB24 width height, width, height) in
       GtkThread.async (fun () ->
           interface#set_image image;
           Option.may (fun (_, (_, interface)) -> interface#set_image image) !fullscreen)

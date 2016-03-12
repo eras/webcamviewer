@@ -131,8 +131,6 @@ let view ~work_queue ?packing config source http_mt () =
   drawing_area#event#add [`BUTTON_PRESS];
   let rendering = ref 0 in
   let received_data config source interface (data : BoundaryDecoder.data) =
-    SingleWorker.submit worker @@ fun () ->
-    show_exn @@ fun () ->
     match Jpeg.decode_int Jpeg.rgb4 (Jpeg.array_of_string data.data_content) with
     | Some jpeg_image ->
       let (width, height) = (jpeg_image.Jpeg.image_width, jpeg_image.Jpeg.image_height) in
@@ -150,6 +148,8 @@ let view ~work_queue ?packing config source http_mt () =
                 Printf.eprintf "Warning: too much pending work, skipping frames\n%!"
         with OrderedWorkQueue.Closed -> () (* ok.. *)
       in
+      SingleWorker.submit worker @@ fun () ->
+      show_exn @@ fun () ->
       if !rendering = 0 then (
         let rgb_data = reordered rgb_data in
         Thread.delay 0.15;       (* Why.. *)

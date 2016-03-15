@@ -4,6 +4,9 @@
 #include <libavcodec/avcodec.h>
 #include <libswscale/swscale.h>
 #include <libavutil/pixfmt.h>
+#include <libswresample/swresample.h>
+#include <libavutil/channel_layout.h>
+#include <libavutil/opt.h>
 
 #include <caml/mlvalues.h>
 #include <caml/memory.h>
@@ -37,10 +40,17 @@ struct Context {
   char*              filename;
 };
 
+enum StreamType {
+  STREAM_VIDEO,
+  STREAM_AUDIO
+};
+
 struct Stream {
+  enum StreamType    type;
   struct Context*    ctx;
   AVStream*          avstream;
   struct SwsContext* swsCtx;
+  struct SwrContext* swrCtx;
 };
 
 #define USER_PIXFORMAT AV_PIX_FMT_RGB32
@@ -149,9 +159,10 @@ ffmpeg_stream_new_video(value ctx_, value video_info_)
   CAMLparam2(ctx_, video_info_);
   struct Context* ctx = (void*) ctx_;
   AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_H264);
-  struct Stream* stream = malloc(sizeof(struct Stream));
+  struct Stream* stream = calloc(sizeof(struct Stream), 1);
   int ret;
 
+  stream->type = STREAM_VIDEO;
   stream->ctx = ctx;
   stream->avstream = avformat_new_stream(ctx->outputCtx, codec);
 
@@ -164,7 +175,9 @@ ffmpeg_stream_new_video(value ctx_, value video_info_)
   stream->avstream->codec->pix_fmt  = AV_PIX_FMT_YUV420P;
   //stream->avstream->codec->gop_size = 30;
 
-  stream->avstream->codec->flags   |= AV_CODEC_FLAG_GLOBAL_HEADER;
+  if (ctx->outputCtx->flags & AVFMT_GLOBALHEADER) {
+    stream->avstream->codec->flags   |= AV_CODEC_FLAG_GLOBAL_HEADER;
+  }
 
   stream->avstream->time_base = (AVRational) {1, 10000};
 
@@ -192,15 +205,69 @@ ffmpeg_stream_new_video(value ctx_, value video_info_)
 }
 
 value
+ffmpeg_stream_new_audio(value ctx_, value audio_info_)
+{
+  CAMLparam2(ctx_, audio_info_);
+  struct Context* ctx = (void*) ctx_;
+  AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_MP3);
+  struct Stream* stream = calloc(sizeof(struct Stream), 1);
+  int ret;
+
+  stream->type = STREAM_AUDIO;
+  stream->ctx = ctx;
+  stream->avstream = avformat_new_stream(ctx->outputCtx, codec);
+
+  stream->avstream->codec->codec_id    = AV_CODEC_ID_AAC;
+  stream->avstream->codec->sample_rate = Int_val(Field(audio_info_, 0));
+  stream->avstream->codec->channels    = Int_val(Field(audio_info_, 1));
+  stream->avstream->codec->sample_fmt  = codec->sample_fmts ? codec->sample_fmts[0] : AV_SAMPLE_FMT_FLTP;
+  stream->avstream->codec->channel_layout = AV_CH_LAYOUT_STEREO;
+  //stream->avstream->codec->channels    = av_get_channel_layout_nb_channels(stream->avstream->codec->channel_layout);
+
+  if (ctx->outputCtx->flags & AVFMT_GLOBALHEADER) {
+    stream->avstream->codec->flags   |= AV_CODEC_FLAG_GLOBAL_HEADER;
+  }
+
+  stream->avstream->time_base = (AVRational) {1, 10000};
+
+  AVDictionary* codecOpts = NULL;
+
+  caml_enter_blocking_section();
+  ret = avcodec_open2(stream->avstream->codec, codec, &codecOpts);
+  assert(ret >= 0);
+
+  if (stream->avstream->codec->sample_fmt != AV_SAMPLE_FMT_S16) {
+    stream->swrCtx = swr_alloc();
+    assert(stream->swrCtx);
+
+    av_opt_set_int       (stream->swrCtx, "in_channel_count",   stream->avstream->codec->channels, 0);
+    av_opt_set_int       (stream->swrCtx, "in_sample_rate",     stream->avstream->codec->sample_rate, 0);
+    av_opt_set_sample_fmt(stream->swrCtx, "in_sample_fmt",      AV_SAMPLE_FMT_S16, 0);
+    av_opt_set_int       (stream->swrCtx, "out_channel_count",  stream->avstream->codec->channels, 0);
+    av_opt_set_int       (stream->swrCtx, "out_sample_rate",    stream->avstream->codec->sample_rate, 0);
+    av_opt_set_sample_fmt(stream->swrCtx, "out_sample_fmt",     stream->avstream->codec->sample_fmt, 0);
+  }
+  
+  caml_leave_blocking_section();
+
+  CAMLreturn((value) stream);
+}
+
+value
 ffmpeg_stream_new(value ctx_, value media_kind_)
 {
   CAMLparam2(ctx_, media_kind_);
   CAMLlocal1(ret);
 
-  if (Tag_val(media_kind_) == 0) {
+  switch (Tag_val(media_kind_)) {
+  case 0: {
     ret = ffmpeg_stream_new_video(ctx_, Field(media_kind_, 0));
+  } break;
+  case 1: {
+    ret = ffmpeg_stream_new_audio(ctx_, Field(media_kind_, 0));
+  } break;
   }
-
+  
   CAMLreturn(ret);
 }
 

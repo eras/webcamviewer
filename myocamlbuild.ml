@@ -16,23 +16,24 @@ let pkg_config flags package =
 
 let _ = dispatch begin function
   | Before_options ->
-     Options.use_ocamlfind := true
+    Options.use_ocamlfind := true
   | After_rules ->
-     let ffmpeg_flags = pkg_config "cflags" "libavformat,libavutil,libavcodec,libswscale" in
-     let ffmpeg_libs = pkg_config "libs" "libavformat,libavutil,libavcodec,libswscale" in
-     let ccoptify flags = flags |> List.map (fun x -> [A"-ccopt"; x]) |> List.concat in
-     flag ["ocaml"; "compile"; "no_warn_40"] (S[A"-w"; A"-40"]);
-     flag ["c"; "compile"; "use_libjpeg"] (S[A"-ccopt"; A"-g"; A"-ccopt"; A"-DLIBJPEG=1"]);
-     flag ["c"; "compile"; "use_turbojpeg"] (S[A"-ccopt"; A"-g"; A"-ccopt"; A"-DTURBOJPEG=1"]);
-     flag ["c"; "compile"; "use_ffmpeg"] (S (ccoptify ffmpeg_flags));
-     flag ["ocaml"; "link"; "use_libjpeg"; "native"] (S[A"-ccopt"; A"-g -ljpeg -Wall -W -Wno-unused-parameter"]);
-     flag ["ocaml"; "link"; "use_libjpeg"; "byte"] (S[A"-custom"; A"-ccopt"; A"-g -ljpeg -Wall -W -Wno-unused-parameter"]);
-     flag ["ocaml"; "link"; "use_turbojpeg"; "native"] (S[A"-ccopt"; A"-g -lturbojpeg -Wall -W -Wno-unused-parameter"]);
-     flag ["ocaml"; "link"; "use_turbojpeg"; "byte"] (S[A"-custom"; A"-ccopt"; A"-g -lturbojpeg -Wall -W -Wno-unused-parameter"]);
-     flag ["ocaml"; "link"; "use_turbojpeg"; "byte"] (S[A"-custom"]);
-     flag ["ocaml"; "link"; "use_turbojpeg"] (S (ccoptify ffmpeg_libs));
-     dep ["link"; "ocaml"; "use_libjpeg"] ["jpeg-c.o"];
-     dep ["link"; "ocaml"; "use_turbojpeg"] ["jpeg-c.o"];
-     dep ["link"; "ocaml"; "use_ffmpeg"] ["ffmpeg-c.o"];
+    let ffmpeg_packages = "libavformat,libavutil,libavcodec,libswscale,libswresample" in
+    let ffmpeg_flags = pkg_config "cflags" ffmpeg_packages in
+    let ffmpeg_libs = pkg_config "libs" ffmpeg_packages in
+    let ccoptify flags = flags |> List.map (fun x -> [A"-ccopt"; x]) |> List.concat in
+    flag ["ocaml"; "compile"; "no_warn_40"] (S[A"-w"; A"-40"]);
+    flag ["c"; "compile"; "use_libjpeg"] (S[A"-ccopt"; A"-g"; A"-ccopt"; A"-DLIBJPEG=1"]);
+    flag ["c"; "compile"; "use_turbojpeg"] (S[A"-ccopt"; A"-g"; A"-ccopt"; A"-DTURBOJPEG=1"]);
+    flag ["c"; "compile"; "use_ffmpeg"] (S (ccoptify ffmpeg_flags));
+    flag ["ocaml"; "link"; "use_libjpeg"; "native"] (S[A"-ccopt"; A"-g -ljpeg -Wall -W -Wno-unused-parameter"]);
+    flag ["ocaml"; "link"; "use_libjpeg"; "byte"] (S[A"-custom"; A"-ccopt"; A"-g -ljpeg -Wall -W -Wno-unused-parameter"]);
+    flag ["ocaml"; "link"; "use_turbojpeg"; "native"] (S[A"-ccopt"; A"-g -lturbojpeg -Wall -W -Wno-unused-parameter"]);
+    flag ["ocaml"; "link"; "use_turbojpeg"; "byte"] (S[A"-custom"; A"-ccopt"; A"-g -lturbojpeg -Wall -W -Wno-unused-parameter"]);
+    flag ["ocaml"; "link"; "use_turbojpeg"; "byte"] (S[A"-custom"]);
+    flag ["ocaml"; "link"; "use_turbojpeg"] (S (ccoptify ffmpeg_libs));
+    dep ["link"; "ocaml"; "use_libjpeg"] ["jpeg-c.o"];
+    dep ["link"; "ocaml"; "use_turbojpeg"] ["jpeg-c.o"];
+    dep ["link"; "ocaml"; "use_ffmpeg"] ["ffmpeg-c.o"];
   | _ -> ()
 end

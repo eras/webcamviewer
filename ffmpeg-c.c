@@ -62,7 +62,7 @@ ffmpeg_create(value filename_)
 
   av_register_all(); // this is fast to redo
 
-  struct Context* ctx = malloc(sizeof(struct Context));
+  struct Context* ctx = calloc(sizeof(struct Context), 1);
   ctx->filename = strdup((char*) filename_);
 
   int ret;

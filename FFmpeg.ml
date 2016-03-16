@@ -17,26 +17,30 @@ type 'a media_kind =
   | Video : video -> [`Video] media_kind
   | Audio : audio -> [`Audio] media_kind
   | Data  : data  -> [`Data]  media_kind
-type 'media_kind stream
+type 'rw rw = [<`Read | `Write] as 'rw
+type ('media_kind, 'rw) stream constraint 'rw = [<`Read | `Write]
 type 'format bitmap = (int32, Bigarray.int32_elt, Bigarray.c_layout) Bigarray.Array1.t
+
+let read = `Read
+let write = `Write
 
 external demo : unit -> int = "ffmpeg_demo"
 
 external create : string -> context = "ffmpeg_create"
 
-external new_stream : context -> 'media_kind media_kind -> 'media_kind stream = "ffmpeg_stream_new"
+external new_stream : context -> 'media_kind media_kind -> ('media_kind, [<`Write]) stream = "ffmpeg_stream_new"
 
 external open_ : context -> unit = "ffmpeg_open"
 
-external new_frame : 'media_kind stream -> pts -> 'media_kind frame = "ffmpeg_frame_new"
+external new_frame : ('media_kind, [`Write]) stream -> pts -> 'media_kind frame = "ffmpeg_frame_new"
 
 external frame_buffer : [>`Video] frame -> 'format bitmap = "ffmpeg_frame_buffer"
   
 external free_frame : 'media_kind frame -> unit = "ffmpeg_frame_free"
 
-external write : 'media_kind stream -> 'media_kind frame -> unit = "ffmpeg_write"
+external write : ('media_kind, 'rw) stream -> 'media_kind frame -> unit = "ffmpeg_write"
 
-external close_stream : 'media_kind stream -> unit = "ffmpeg_stream_close"
+external close_stream : ('media_kind, 'rw) stream -> unit = "ffmpeg_stream_close"
 
 external close : context -> unit = "ffmpeg_close"
 

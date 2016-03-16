@@ -3,7 +3,7 @@ open Common
     
 type context = {
   ffmpeg : FFmpeg.context;
-  stream : [`Video] FFmpeg.stream;
+  stream : ([`Video], [`Write]) FFmpeg.stream;
   width  : int;
   height : int;
 }

@@ -175,7 +175,7 @@ ffmpeg_stream_new_video(value ctx_, value video_info_)
   stream->avstream->codec->pix_fmt  = AV_PIX_FMT_YUV420P;
   //stream->avstream->codec->gop_size = 30;
 
-  if (ctx->outputCtx->flags & AVFMT_GLOBALHEADER) {
+  if (ctx->outputCtx->oformat->flags & AVFMT_GLOBALHEADER) {
     stream->avstream->codec->flags   |= AV_CODEC_FLAG_GLOBAL_HEADER;
   }
 
@@ -224,7 +224,7 @@ ffmpeg_stream_new_audio(value ctx_, value audio_info_)
   stream->avstream->codec->channel_layout = AV_CH_LAYOUT_STEREO;
   //stream->avstream->codec->channels    = av_get_channel_layout_nb_channels(stream->avstream->codec->channel_layout);
 
-  if (ctx->outputCtx->flags & AVFMT_GLOBALHEADER) {
+  if (ctx->outputCtx->oformat->flags & AVFMT_GLOBALHEADER) {
     stream->avstream->codec->flags   |= AV_CODEC_FLAG_GLOBAL_HEADER;
   }
 

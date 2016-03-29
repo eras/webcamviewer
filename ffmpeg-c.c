@@ -36,7 +36,7 @@ rgbaClear(AVFrame* frame)
 }
 
 struct Context {
-  AVFormatContext*   outputCtx;
+  AVFormatContext*   fmtCtx;
   char*              filename;
 };
 
@@ -67,7 +67,29 @@ ffmpeg_create(value filename_)
 
   int ret;
   caml_enter_blocking_section();
-  ret = avformat_alloc_output_context2(&ctx->outputCtx, NULL, NULL, (char*) filename_);
+  ret = avformat_alloc_output_context2(&ctx->fmtCtx, NULL, NULL, (char*) filename_);
+  assert(ret >= 0);
+
+  caml_leave_blocking_section();
+  CAMLreturn((value) ctx);
+}
+
+value
+ffmpeg_open_input(value filename_)
+{
+  CAMLparam1(filename_);
+
+  av_register_all(); // this is fast to redo
+
+  struct Context* ctx = calloc(sizeof(struct Context), 1);
+  ctx->filename = strdup((char*) filename_);
+
+  int ret;
+  caml_enter_blocking_section();
+  ret = avformat_open_input(&ctx->fmtCtx, ctx->filename, NULL, NULL);
+  assert(ret >= 0);
+
+  ret = avformat_find_stream_info(ctx->fmtCtx, NULL);
   assert(ret >= 0);
 
   caml_leave_blocking_section();
@@ -81,10 +103,10 @@ ffmpeg_open(value ctx_)
   struct Context* ctx = (void*) ctx_;
   int ret;
   caml_enter_blocking_section();
-  ret = avio_open(&ctx->outputCtx->pb, ctx->filename, AVIO_FLAG_WRITE);
+  ret = avio_open(&ctx->fmtCtx->pb, ctx->filename, AVIO_FLAG_WRITE);
   assert(ret >= 0);
 
-  ret = avformat_write_header(ctx->outputCtx, NULL);
+  ret = avformat_write_header(ctx->fmtCtx, NULL);
   caml_leave_blocking_section();
   assert(ret >= 0);
   CAMLreturn(Val_unit);
@@ -98,9 +120,9 @@ ffmpeg_close(value ctx_)
   struct Context* ctx = (void*) ctx_;
 
   caml_enter_blocking_section();
-  av_write_trailer(ctx->outputCtx);
+  av_write_trailer(ctx->fmtCtx);
   //avcodec_close(ctx->avstream->codec); ??
-  avformat_free_context(ctx->outputCtx);
+  avformat_free_context(ctx->fmtCtx);
   free(ctx);
   caml_leave_blocking_section();
   CAMLreturn(Val_unit);
@@ -142,7 +164,7 @@ ffmpeg_write(value stream_, value rgbaFrame_)
   assert(ret >= 0);
   if (gotIt) {
     packet.stream_index = 0;
-    ret = av_interleaved_write_frame(stream->ctx->outputCtx, &packet);
+    ret = av_interleaved_write_frame(stream->ctx->fmtCtx, &packet);
     assert(ret >= 0);
   }
 
@@ -164,7 +186,7 @@ ffmpeg_stream_new_video(value ctx_, value video_info_)
 
   stream->type = STREAM_VIDEO;
   stream->ctx = ctx;
-  stream->avstream = avformat_new_stream(ctx->outputCtx, codec);
+  stream->avstream = avformat_new_stream(ctx->fmtCtx, codec);
 
   stream->avstream->codec->codec_id = AV_CODEC_ID_H264;
   /* stream->avstream->codec->rc_min_rate = 50000; */
@@ -175,7 +197,7 @@ ffmpeg_stream_new_video(value ctx_, value video_info_)
   stream->avstream->codec->pix_fmt  = AV_PIX_FMT_YUV420P;
   //stream->avstream->codec->gop_size = 30;
 
-  if (ctx->outputCtx->oformat->flags & AVFMT_GLOBALHEADER) {
+  if (ctx->fmtCtx->oformat->flags & AVFMT_GLOBALHEADER) {
     stream->avstream->codec->flags   |= AV_CODEC_FLAG_GLOBAL_HEADER;
   }
 
@@ -209,13 +231,13 @@ ffmpeg_stream_new_audio(value ctx_, value audio_info_)
 {
   CAMLparam2(ctx_, audio_info_);
   struct Context* ctx = (void*) ctx_;
-  AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_MP3);
+  AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_AAC);
   struct Stream* stream = calloc(sizeof(struct Stream), 1);
   int ret;
 
   stream->type = STREAM_AUDIO;
   stream->ctx = ctx;
-  stream->avstream = avformat_new_stream(ctx->outputCtx, codec);
+  stream->avstream = avformat_new_stream(ctx->fmtCtx, codec);
 
   stream->avstream->codec->codec_id    = AV_CODEC_ID_AAC;
   stream->avstream->codec->sample_rate = Int_val(Field(audio_info_, 0));
@@ -224,7 +246,7 @@ ffmpeg_stream_new_audio(value ctx_, value audio_info_)
   stream->avstream->codec->channel_layout = AV_CH_LAYOUT_STEREO;
   //stream->avstream->codec->channels    = av_get_channel_layout_nb_channels(stream->avstream->codec->channel_layout);
 
-  if (ctx->outputCtx->oformat->flags & AVFMT_GLOBALHEADER) {
+  if (ctx->fmtCtx->oformat->flags & AVFMT_GLOBALHEADER) {
     stream->avstream->codec->flags   |= AV_CODEC_FLAG_GLOBAL_HEADER;
   }
 
@@ -285,7 +307,7 @@ ffmpeg_stream_close(value stream_)
       assert(ret >= 0);
       if (gotIt) {
         packet.stream_index = 0;
-        ret = av_interleaved_write_frame(stream->ctx->outputCtx, &packet);
+        ret = av_interleaved_write_frame(stream->ctx->fmtCtx, &packet);
         assert(ret >= 0);
       }
     } while (gotIt);

@@ -2,7 +2,7 @@ open Batteries
 open Common
     
 type context = {
-  ffmpeg : FFmpeg.context;
+  ffmpeg : [`Write] FFmpeg.context;
   stream : ([`Video], [`Write]) FFmpeg.stream;
   width  : int;
   height : int;
@@ -26,7 +26,7 @@ let save t time (image, width, height) =
   let ctx = match t.context with
     | None ->
       let ffmpeg = FFmpeg.create (t.make_filename time) in
-      let stream = FFmpeg.new_stream ffmpeg FFmpeg.(Video { v_width = width; v_height = height }) in
+      let stream = FFmpeg.new_stream ffmpeg FFmpeg.(CreateVideo { v_width = width; v_height = height }) in
       let () = FFmpeg.open_ ffmpeg in
       let ctx = {ffmpeg; stream; width; height;} in
       t.context <- Some ctx;
@@ -35,7 +35,7 @@ let save t time (image, width, height) =
       FFmpeg.close_stream ctx.stream;
       FFmpeg.close ctx.ffmpeg;
       let ffmpeg = FFmpeg.create (t.make_filename time) in
-      let stream = FFmpeg.new_stream ffmpeg FFmpeg.(Video { v_width = width; v_height = height }) in
+      let stream = FFmpeg.new_stream ffmpeg FFmpeg.(CreateVideo { v_width = width; v_height = height }) in
       let () = FFmpeg.open_ ffmpeg in
       let ctx = { ctx with ffmpeg; stream } in
       t.context <- Some ctx;

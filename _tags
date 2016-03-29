@@ -1,4 +1,17 @@
-<*>: package(lablgtk2), package(lablgtk2.auto-init), package(curl), package(pcre), package(batteries), package(cairo2), package(cairo2.lablgtk2), thread
+<*>: package(lablgtk2), \
+	package(lablgtk2.auto-init), \
+	package(curl), \
+	package(pcre), \
+	package(batteries), \
+	package(cairo2), \
+	package(cairo2.lablgtk2), \
+	package(ctypes), \
+	package(ctypes.stubs), \
+	thread
+<FFmpeg.*>: package(ctypes)
+<FFmpegGeneratedCTypes.*>: package(ctypes), package(ctypes.stubs)
+<FFmpegGen.*>: package(ctypes), package(ctypes.foreign), package(ctypes.stubs)
+<FFmpegGenGen-c.c>: use_ctypes
 <*>: package(toml)
 <*>: debug, bin_annot
 <*>: use_turbojpeg

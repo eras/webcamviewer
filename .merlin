@@ -6,5 +6,6 @@ PKG lablgtk2
 PKG cairo2
 PKG toml
 PKG threads
+PKG ctypes
 FLG -w -40
 B +threads

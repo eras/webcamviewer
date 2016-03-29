@@ -1,5 +1,8 @@
 include FFmpegTypes
 
+module FFmpegCTypes = FFmpegBindings.Types(FFmpegGeneratedCTypes)
+
+let _ = FFmpegCTypes.avmedia_type_to_c AVMEDIA_TYPE_VIDEO
 
 external demo : unit -> int = "ffmpeg_demo"
 

@@ -17,8 +17,8 @@ let pkg_config flags package =
 let ctypes = Findlib.query "ctypes"
 
 let ffmpeg_packages = "libavformat,libavutil,libavcodec,libswscale,libswresample"
-let ffmpeg_flags = pkg_config "cflags" ffmpeg_packages
-let ffmpeg_libs = pkg_config "libs" ffmpeg_packages
+let ffmpeg_flags = lazy (pkg_config "cflags" ffmpeg_packages)
+let ffmpeg_libs = lazy (pkg_config "libs" ffmpeg_packages)
 
 let ccoptify flags = flags |> List.map (fun x -> [A"-ccopt"; x]) |> List.concat
 
@@ -35,7 +35,7 @@ let ctypes_rules cbase phase1gen phase2gen ocaml =
     (fun _ _ ->
        Cmd (S ([Sh "cc"; A(cbase ^ ".o");
                 A"-o"; A phase2gen;
-                A"-I"; A ctypes.Findlib.location] @ ffmpeg_libs))
+                A"-I"; A ctypes.Findlib.location] @ Lazy.force ffmpeg_libs))
     );
 
   rule "ctypes generated ml"
@@ -51,13 +51,13 @@ let _ = dispatch begin function
     flag ["ocaml"; "compile"; "no_warn_40"] (S[A"-w"; A"-40"]);
     flag ["c"; "compile"; "use_libjpeg"] (S[A"-ccopt"; A"-g"; A"-ccopt"; A"-DLIBJPEG=1"]);
     flag ["c"; "compile"; "use_turbojpeg"] (S[A"-ccopt"; A"-g"; A"-ccopt"; A"-DTURBOJPEG=1"]);
-    flag ["c"; "compile"; "use_ffmpeg"] (S (ccoptify ffmpeg_flags));
+    flag ["c"; "compile"; "use_ffmpeg"] (S (ccoptify @@ Lazy.force ffmpeg_flags));
     flag ["ocaml"; "link"; "use_libjpeg"; "native"] (S[A"-ccopt"; A"-g -ljpeg -Wall -W -Wno-unused-parameter"]);
     flag ["ocaml"; "link"; "use_libjpeg"; "byte"] (S[A"-custom"; A"-ccopt"; A"-g -ljpeg -Wall -W -Wno-unused-parameter"]);
     flag ["ocaml"; "link"; "use_turbojpeg"; "native"] (S[A"-ccopt"; A"-g -lturbojpeg -Wall -W -Wno-unused-parameter"]);
     flag ["ocaml"; "link"; "use_turbojpeg"; "byte"] (S[A"-custom"; A"-ccopt"; A"-g -lturbojpeg -Wall -W -Wno-unused-parameter"]);
     flag ["ocaml"; "link"; "use_turbojpeg"; "byte"] (S[A"-custom"]);
-    flag ["ocaml"; "link"; "use_turbojpeg"] (S (ccoptify ffmpeg_libs));
+    flag ["ocaml"; "link"; "use_turbojpeg"] (S (ccoptify @@ Lazy.force ffmpeg_libs));
     dep ["link"; "ocaml"; "use_libjpeg"] ["jpeg-c.o"];
     dep ["link"; "ocaml"; "use_turbojpeg"] ["jpeg-c.o"];
     dep ["link"; "ocaml"; "use_ffmpeg"] ["ffmpeg-c.o"];

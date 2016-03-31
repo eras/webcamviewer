@@ -44,29 +44,37 @@ let ctypes_rules cbase phase1gen phase2gen ocaml =
     (fun _ _ ->
        Cmd(S[P ("./" ^ phase2gen); Sh">"; A ocaml]))
 
+let setup_ffmpeg () =
+  ocaml_lib "ffmpeg/libFFmpeg";
+
+  flag ["c"; "compile"; "build_FFmpeg"] (S (ccoptify @@ Lazy.force ffmpeg_flags));
+  flag ["link"; "library"; "ocaml"; "build_FFmpeg"] (S[
+      S (ccoptify @@ Lazy.force ffmpeg_libs);
+      S [A "-cclib"; A "-Lffmpeg"; A "-cclib"; A"-lFFmpeg-stubs"]
+    ]
+    );
+  dep ["build_FFmpeg"] ["ffmpeg/libFFmpeg-stubs.a"];
+
+  ctypes_rules "ffmpeg/FFmpegGenGen-c" "ffmpeg/FFmpegGen.byte" "ffmpeg/FFmpegGenGen" "ffmpeg/FFmpegGeneratedCTypes.ml"
+
 let _ = dispatch begin function
   | Before_options ->
     Options.use_ocamlfind := true
   | After_rules ->
-    ocaml_lib "ffmpeg/FFmpeg";
+    setup_ffmpeg ();
 
     flag ["ocaml"; "compile"; "no_warn_40"] (S[A"-w"; A"-40"]);
     flag ["c"; "compile"; "use_libjpeg"] (S[A"-ccopt"; A"-g"; A"-ccopt"; A"-DLIBJPEG=1"]);
     flag ["c"; "compile"; "use_turbojpeg"] (S[A"-ccopt"; A"-g"; A"-ccopt"; A"-DTURBOJPEG=1"]);
-    flag ["c"; "compile"; "use_ffmpeg"] (S (ccoptify @@ Lazy.force ffmpeg_flags));
     flag ["ocaml"; "link"; "use_libjpeg"; "native"] (S[A"-ccopt"; A"-g -ljpeg -Wall -W -Wno-unused-parameter"]);
     flag ["ocaml"; "link"; "use_libjpeg"; "byte"] (S[A"-custom"; A"-ccopt"; A"-g -ljpeg -Wall -W -Wno-unused-parameter"]);
     flag ["ocaml"; "link"; "use_turbojpeg"; "native"] (S[A"-ccopt"; A"-g -lturbojpeg -Wall -W -Wno-unused-parameter"]);
     flag ["ocaml"; "link"; "use_turbojpeg"; "byte"] (S[A"-custom"; A"-ccopt"; A"-g -lturbojpeg -Wall -W -Wno-unused-parameter"]);
     flag ["ocaml"; "link"; "use_turbojpeg"; "byte"] (S[A"-custom"]);
-    flag ["ocaml"; "link"; "use_turbojpeg"] (S (ccoptify @@ Lazy.force ffmpeg_libs));
     dep ["link"; "ocaml"; "use_libjpeg"] ["src/jpeg-c.o"];
     dep ["link"; "ocaml"; "use_turbojpeg"] ["src/jpeg-c.o"];
-    dep ["link"; "ocaml"; "use_ffmpeg"] ["ffmpeg/ffmpeg-c.o"];
 
-    flag ["c"; "compile"; "use_ctypes"] (S[A"-ccopt"; A"-I"; A"-ccopt"; A ctypes.Findlib.location]);
-
-    ctypes_rules "ffmpeg/FFmpegGenGen-c" "ffmpeg/FFmpegGen.byte" "ffmpeg/FFmpegGenGen" "ffmpeg/FFmpegGeneratedCTypes.ml"
+    flag ["c"; "compile"; "use_ctypes"] (S[A"-ccopt"; A"-I"; A"-ccopt"; A ctypes.Findlib.location])
 
   | _ -> ()
 end

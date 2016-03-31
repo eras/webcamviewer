@@ -74,7 +74,9 @@ let _ = dispatch begin function
     dep ["link"; "ocaml"; "use_libjpeg"] ["src/jpeg-c.o"];
     dep ["link"; "ocaml"; "use_turbojpeg"] ["src/jpeg-c.o"];
 
-    flag ["c"; "compile"; "use_ctypes"] (S[A"-ccopt"; A"-I"; A"-ccopt"; A ctypes.Findlib.location])
+    flag ["c"; "compile"; "use_ctypes"] (S[A"-ccopt"; A"-I"; A"-ccopt"; A ctypes.Findlib.location]);
+
+    flag ["mktop"; "use_libFFmpeg"] (A"-custom")
 
   | _ -> ()
 end

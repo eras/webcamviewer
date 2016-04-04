@@ -16,25 +16,6 @@
 #include <caml/bigarray.h>
 #include <caml/threads.h>
 
-void
-rgbaFillBox(AVFrame* frame, int x0, int y0, int x1, int y1)
-{
-  for (int y = y0; y <= y1; ++y) {
-    for (int x = x0; x <= x1; ++x) {
-      frame->data[0][y * frame->linesize[0] + x * 4 + 0] = 255;
-      frame->data[0][y * frame->linesize[0] + x * 4 + 1] = 255;
-      frame->data[0][y * frame->linesize[0] + x * 4 + 2] = 255;
-      frame->data[0][y * frame->linesize[0] + x * 4 + 3] = 0;
-    }
-  }
-}
-
-void
-rgbaClear(AVFrame* frame)
-{
-  memset(frame->data[0], 0, frame->height * frame->linesize[0]);
-}
-
 struct Context {
   AVFormatContext*   fmtCtx;
   char*              filename;
@@ -79,7 +60,6 @@ Stream_context_val(value v)
 }
 
 #define Stream_aux_direct_val(v) Field(v, 1)
-//#define Stream_aux_val(v)       Stream_aux_val(Stream_aux_direct_val(v))
 
 struct StreamAux*
 Stream_aux_val(value v)
@@ -437,30 +417,4 @@ ffmpeg_frame_free(value frame)
   av_frame_free(&ptr);
   AVFrame_val(frame) = NULL;
   CAMLreturn(Val_unit);
-}
-
-value
-ffmpeg_demo(value arg)
-{
-  CAMLlocal3(rgbaFrame, ctx, stream);
-
-#if 0
-  ctx = ffmpeg_create(caml_copy_string("foo.mp4"));
-  stream = ffmpeg_new_Stream(caml_copy_string("foo.mp4"), Val_int(640), Val_int(480));
-  ctx = ffmpeg_open(caml_copy_string("foo.mp4"), Val_int(640), Val_int(480));
-
-  for (int c = 0; c < 400; ++c) {
-    rgbaFrame = ffmpeg_frame_new(ctx, caml_copy_int64(100 * c));
-    assert(rgbaFrame);
-
-    rgbaClear((AVFrame*) rgbaFrame);
-    rgbaFillBox((AVFrame*) rgbaFrame, 100 + 10 * c, 100, 200 + 10 * c, 200);
-
-    ffmpeg_write(ctx, rgbaFrame);
-    ffmpeg_frame_free(rgbaFrame);
-  }
-  ffmpeg_close(ctx);
-#endif
-
-  return Val_int(0);
 }

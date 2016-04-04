@@ -48,6 +48,7 @@ let setup_ffmpeg () =
   ocaml_lib "ffmpeg/libFFmpeg";
 
   flag ["c"; "compile"; "build_FFmpeg"] (S (ccoptify @@ Lazy.force ffmpeg_flags));
+  flag ["c"; "compile"; "build_FFmpeg"] (S [A "-ccopt"; A "-O0"]);
   flag ["link"; "library"; "ocaml"; "build_FFmpeg"] (S[
       S (ccoptify @@ Lazy.force ffmpeg_libs);
       S [A "-cclib"; A "-Lffmpeg"; A "-cclib"; A"-lFFmpeg-stubs"]

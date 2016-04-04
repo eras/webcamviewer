@@ -1,4 +1,5 @@
-B _build
+B _build/src
+B _build/ffmpeg
 PKG pcre
 PKG curl
 PKG batteries
@@ -8,4 +9,4 @@ PKG toml
 PKG threads
 PKG ctypes
 FLG -w -40
-B +threads
+FLG +threads

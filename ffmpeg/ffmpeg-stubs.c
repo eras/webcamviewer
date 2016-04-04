@@ -133,11 +133,13 @@ ffmpeg_create(value filename_)
   Context_val(ctx)->filename = strdup((char*) filename_);
 
   int ret;
-  //caml_enter_blocking_section();
-  ret = avformat_alloc_output_context2(&Context_val(ctx)->fmtCtx, NULL, NULL, (char*) filename_);
+  AVFormatContext* fmtCtx;
+  caml_enter_blocking_section();
+  ret = avformat_alloc_output_context2(&fmtCtx, NULL, NULL, (char*) filename_);
   assert(ret >= 0);
 
-  //caml_leave_blocking_section();
+  caml_leave_blocking_section();
+  Context_val(ctx)->fmtCtx = fmtCtx;
   CAMLreturn(ctx);
 }
 
@@ -152,14 +154,17 @@ ffmpeg_open_input(value filename_)
   Context_val(ctx)->filename = strdup((char*) filename_);
 
   int ret;
-  //caml_enter_blocking_section();
-  ret = avformat_open_input(&Context_val(ctx)->fmtCtx, Context_val(ctx)->filename, NULL, NULL);
+  AVFormatContext* fmtCtx;
+  char* filename = Context_val(ctx)->filename;
+  caml_enter_blocking_section();
+  ret = avformat_open_input(&fmtCtx, filename, NULL, NULL);
   assert(ret >= 0);
 
-  ret = avformat_find_stream_info(Context_val(ctx)->fmtCtx, NULL);
+  ret = avformat_find_stream_info(fmtCtx, NULL);
   assert(ret >= 0);
 
-  //caml_leave_blocking_section();
+  caml_leave_blocking_section();
+  Context_val(ctx)->fmtCtx = fmtCtx;
   CAMLreturn(ctx);
 }
 
@@ -168,12 +173,16 @@ ffmpeg_open(value ctx)
 {
   CAMLparam1(ctx);
   int ret;
-  //caml_enter_blocking_section();
-  ret = avio_open(&Context_val(ctx)->fmtCtx->pb, Context_val(ctx)->filename, AVIO_FLAG_WRITE);
+  char* filename = Context_val(ctx)->filename;
+  AVIOContext** pb = &Context_val(ctx)->fmtCtx->pb;
+  AVFormatContext* fmtCtx = Context_val(ctx)->fmtCtx;
+
+  caml_enter_blocking_section();
+  ret = avio_open(pb, filename, AVIO_FLAG_WRITE);
   assert(ret >= 0);
 
-  ret = avformat_write_header(Context_val(ctx)->fmtCtx, NULL);
-  //caml_leave_blocking_section();
+  ret = avformat_write_header(fmtCtx, NULL);
+  caml_leave_blocking_section();
   assert(ret >= 0);
   CAMLreturn(Val_unit);
 }
@@ -184,14 +193,15 @@ ffmpeg_close(value ctx)
 {
   CAMLparam1(ctx);
 
-  //caml_enter_blocking_section();
-  av_write_trailer(Context_val(ctx)->fmtCtx);
+  AVFormatContext* fmtCtx = Context_val(ctx)->fmtCtx;
+  caml_enter_blocking_section();
+  av_write_trailer(fmtCtx);
   //avcodec_close(Context_val(ctx)->avstream->codec); ??
-  avformat_free_context(Context_val(ctx)->fmtCtx);
+  avformat_free_context(fmtCtx);
+  caml_leave_blocking_section();
   Context_val(ctx)->fmtCtx = NULL;
   free(Context_val(ctx)->filename);
   Context_val(ctx)->filename = NULL;
-  //caml_leave_blocking_section();
   CAMLreturn(Val_unit);
 }
 
@@ -202,6 +212,9 @@ ffmpeg_write(value stream, value rgbaFrame)
   int ret;
   AVFrame* yuvFrame = av_frame_alloc();
   assert(yuvFrame);
+
+  struct StreamAux streamAux = *Stream_aux_val(stream);
+  AVFormatContext* fmtCtx = Stream_context_val(stream)->fmtCtx;
 
   yuvFrame->format = AV_PIX_FMT_YUV420P;
   yuvFrame->width = AVFrame_val(rgbaFrame)->width;
@@ -215,27 +228,27 @@ ffmpeg_write(value stream, value rgbaFrame)
 
   yuvFrame->pts = AVFrame_val(rgbaFrame)->pts;
 
-  //caml_enter_blocking_section();
+  caml_enter_blocking_section();
 
-  sws_scale(Stream_aux_val(stream)->swsCtx,
+  sws_scale(streamAux.swsCtx,
             (const uint8_t * const *) AVFrame_val(rgbaFrame)->data,
             AVFrame_val(rgbaFrame)->linesize,
-            0, Stream_aux_val(stream)->avstream->codec->height, yuvFrame->data, yuvFrame->linesize);
+            0, streamAux.avstream->codec->height, yuvFrame->data, yuvFrame->linesize);
 
   AVPacket packet = { 0 };
   av_init_packet(&packet);
   int gotIt = 0;
-  ret = avcodec_encode_video2(Stream_aux_val(stream)->avstream->codec, &packet, yuvFrame, &gotIt);
+  ret = avcodec_encode_video2(streamAux.avstream->codec, &packet, yuvFrame, &gotIt);
   assert(ret >= 0);
   if (gotIt) {
     packet.stream_index = 0;
-    ret = av_interleaved_write_frame(Stream_context_val(stream)->fmtCtx, &packet);
+    ret = av_interleaved_write_frame(fmtCtx, &packet);
     assert(ret >= 0);
   }
 
   av_frame_free(&yuvFrame);
 
-  //caml_leave_blocking_section();
+  caml_leave_blocking_section();
 
   CAMLreturn(Val_unit);
 }

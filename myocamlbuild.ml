@@ -54,7 +54,7 @@ let setup_ffmpeg () =
       S [A "-cclib"; A "-Lffmpeg"; A "-cclib"; A"-lFFmpeg-stubs"]
     ]
     );
-  dep ["build_FFmpeg"] ["ffmpeg/libFFmpeg-stubs.a"];
+  dep ["link"; "build_FFmpeg"] ["ffmpeg/libFFmpeg-stubs.a"];
 
   ctypes_rules "ffmpeg/FFmpegGenGen-c" "ffmpeg/FFmpegGen.byte" "ffmpeg/FFmpegGenGen" "ffmpeg/FFmpegGeneratedCTypes.ml"
 

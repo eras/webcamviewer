@@ -1,6 +1,7 @@
 <*>: package(batteries), \
 	package(ctypes), \
-	package(ctypes.stubs)
+	package(ctypes.stubs), \
+	debug
 <libFFmpeg.cm{,x}a>: build_FFmpeg
 <FFmpeg.*>: package(ctypes)
 <FFmpegGeneratedCTypes.*>: package(ctypes), package(ctypes.stubs)

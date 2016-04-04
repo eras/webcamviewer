@@ -3,6 +3,7 @@
 	package(ctypes.stubs), \
 	debug
 <libFFmpeg.cm{,x}a>: build_FFmpeg
+<ffmpeg-stubs.c>: build_FFmpeg
 <FFmpeg.*>: package(ctypes)
 <FFmpegGeneratedCTypes.*>: package(ctypes), package(ctypes.stubs)
 <FFmpegGen.*>: package(ctypes), package(ctypes.foreign), package(ctypes.stubs)

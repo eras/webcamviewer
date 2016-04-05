@@ -272,9 +272,12 @@ ffmpeg_stream_new_video(value ctx, value video_info_)
   //av_dict_set(&codecOpts, "x264-params", "crf=40:keyint=60:vbv_bufsize=40000:vbv_maxrate=150000", 0);
   av_dict_set(&codecOpts, "x264-params", "crf=36:keyint=60", 0);
 
-  //caml_enter_blocking_section();
-  ret = avcodec_open2(Stream_aux_val(stream)->avstream->codec, codec, &codecOpts);
+  AVCodecContext* codecCtx = Stream_aux_val(stream)->avstream->codec;
+
+  caml_enter_blocking_section();
+  ret = avcodec_open2( codecCtx, codec, &codecOpts);
   assert(ret >= 0);
+  caml_leave_blocking_section();
 
   assert(Stream_aux_val(stream)->avstream->codec->pix_fmt == AV_PIX_FMT_YUV420P);
 
@@ -282,7 +285,6 @@ ffmpeg_stream_new_video(value ctx, value video_info_)
     sws_getContext(Stream_aux_val(stream)->avstream->codec->width, Stream_aux_val(stream)->avstream->codec->height, USER_PIXFORMAT,
                    Stream_aux_val(stream)->avstream->codec->width, Stream_aux_val(stream)->avstream->codec->height, Stream_aux_val(stream)->avstream->codec->pix_fmt,
                    0, NULL, NULL, NULL);
-  //caml_leave_blocking_section();
 
   CAMLreturn((value) stream);
 }
@@ -315,10 +317,12 @@ ffmpeg_stream_new_audio(value ctx, value audio_info_)
   Stream_aux_val(stream)->avstream->time_base = (AVRational) {1, 10000};
 
   AVDictionary* codecOpts = NULL;
+  AVCodecContext* codecCtx = Stream_aux_val(stream)->avstream->codec;
 
-  //caml_enter_blocking_section();
-  ret = avcodec_open2(Stream_aux_val(stream)->avstream->codec, codec, &codecOpts);
+  caml_enter_blocking_section();
+  ret = avcodec_open2(codecCtx, codec, &codecOpts);
   assert(ret >= 0);
+  caml_leave_blocking_section();
 
   if (Stream_aux_val(stream)->avstream->codec->sample_fmt != AV_SAMPLE_FMT_S16) {
     Stream_aux_val(stream)->swrCtx = swr_alloc();
@@ -332,7 +336,6 @@ ffmpeg_stream_new_audio(value ctx, value audio_info_)
     av_opt_set_sample_fmt(Stream_aux_val(stream)->swrCtx, "out_sample_fmt",     Stream_aux_val(stream)->avstream->codec->sample_fmt, 0);
   }
   
-  //caml_leave_blocking_section();
 
   CAMLreturn((value) stream);
 }

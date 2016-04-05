@@ -180,6 +180,12 @@ ffmpeg_close(value ctx)
   av_write_trailer(fmtCtx);
   //avcodec_close(Context_val(ctx)->avstream->codec); ??
   avformat_free_context(fmtCtx);
+
+  if (!(fmtCtx->flags & AVFMT_NOFILE)) {
+    int ret = avio_close(fmtCtx->pb);
+    assert(ret >= 0);
+  }
+
   caml_leave_blocking_section();
   Context_val(ctx)->fmtCtx = NULL;
   free(Context_val(ctx)->filename);

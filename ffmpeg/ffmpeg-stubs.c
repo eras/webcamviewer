@@ -156,12 +156,13 @@ ffmpeg_open(value ctx)
   CAMLparam1(ctx);
   int ret;
   char* filename = Context_val(ctx)->filename;
-  AVIOContext** pb = &Context_val(ctx)->fmtCtx->pb;
   AVFormatContext* fmtCtx = Context_val(ctx)->fmtCtx;
 
   caml_enter_blocking_section();
-  ret = avio_open(pb, filename, AVIO_FLAG_WRITE);
-  assert(ret >= 0);
+  if (!(fmtCtx->flags & AVFMT_NOFILE)) {
+    ret = avio_open(&fmtCtx->pb, filename, AVIO_FLAG_WRITE);
+    assert(ret >= 0);
+  }
 
   ret = avformat_write_header(fmtCtx, NULL);
   caml_leave_blocking_section();

@@ -47,8 +47,15 @@ let ctypes_rules cbase phase1gen phase2gen ocaml =
 let setup_ffmpeg () =
   ocaml_lib "ffmpeg/libFFmpeg";
 
+  flag ["mktop"; "use_libFFmpeg"] (A"-custom");
+  dep ["link"; "use_libFFmpeg"; "byte"] ["ffmpeg/libFFmpeg.cma"];
+  dep ["link"; "use_libFFmpeg"; "native"] ["ffmpeg/libFFmpeg.cmxa"];
+
   flag ["c"; "compile"; "build_FFmpeg"] (S (ccoptify @@ Lazy.force ffmpeg_flags));
   flag ["c"; "compile"; "build_FFmpeg"] (S [A "-ccopt"; A "-O0"]);
+  flag ["c"; "compile"; "build_FFmpeg"] (S [A "-ccopt"; A "-W"]);
+  flag ["c"; "compile"; "build_FFmpeg"] (S [A "-ccopt"; A "-Wall"]);
+  flag ["c"; "compile"; "build_FFmpeg"] (S [A "-ccopt"; A "-Wno-missing-field-initializers"]);
   flag ["link"; "library"; "ocaml"; "build_FFmpeg"] (S[
       S (ccoptify @@ Lazy.force ffmpeg_libs);
       S [A "-cclib"; A "-Lffmpeg"; A "-cclib"; A"-lFFmpeg-stubs"]
@@ -76,8 +83,6 @@ let _ = dispatch begin function
     dep ["link"; "ocaml"; "use_turbojpeg"] ["src/jpeg-c.o"];
 
     flag ["c"; "compile"; "use_ctypes"] (S[A"-ccopt"; A"-I"; A"-ccopt"; A ctypes.Findlib.location]);
-
-    flag ["mktop"; "use_libFFmpeg"] (A"-custom")
 
   | _ -> ()
 end

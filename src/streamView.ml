@@ -22,10 +22,17 @@ let reordered src =
 
 let make_filename config source now =
   let rec find_available number =
-    let directory = Printf.sprintf "%s/%s" config.config_output_base source.source_name in
+    let tm = Unix.localtime now in
+    let date_str =
+      Printf.sprintf
+        "%04d-%02d-%02d"
+        (tm.tm_year + 1900)
+        (tm.tm_mon + 1)
+        (tm.tm_mday)
+    in
+    let directory = Printf.sprintf "%s/%s/%s" config.config_output_base source.source_name date_str in
     Utils.mkdir_rec directory;
     let time_str =
-      let tm = Unix.localtime now in
       Printf.sprintf
         "%04d-%02d-%02d_%02d-%02d"
         (tm.tm_year + 1900)

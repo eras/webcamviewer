@@ -106,10 +106,11 @@ value
 ffmpeg_create(value filename_)
 {
   CAMLparam1(filename_);
+  CAMLlocal1(ctx);
 
   av_register_all(); // this is fast to redo
 
-  value ctx = caml_alloc_custom(&context_ops, sizeof(struct Context), 0, 1);
+  ctx = caml_alloc_custom(&context_ops, sizeof(struct Context), 0, 1);
   Context_val(ctx)->filename = strdup((char*) filename_);
 
   int ret;
@@ -127,10 +128,11 @@ value
 ffmpeg_open_input(value filename_)
 {
   CAMLparam1(filename_);
+  CAMLlocal1(ctx);
 
   av_register_all(); // this is fast to redo
 
-  value ctx = caml_alloc_custom(&context_ops, sizeof(struct Context), 0, 1);
+  ctx = caml_alloc_custom(&context_ops, sizeof(struct Context), 0, 1);
   Context_val(ctx)->filename = strdup((char*) filename_);
 
   int ret;
@@ -237,8 +239,9 @@ value
 ffmpeg_stream_new_video(value ctx, value video_info_)
 {
   CAMLparam2(ctx, video_info_);
+  CAMLlocal1(stream);
+  stream = caml_alloc_tuple(StreamSize);
   AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_H264);
-  value stream = caml_alloc_tuple(StreamSize);
   int ret;
 
   Stream_aux_direct_val(stream) = caml_alloc_custom(&streamaux_ops, sizeof(struct StreamAux), 0, 1);
@@ -288,8 +291,9 @@ value
 ffmpeg_stream_new_audio(value ctx, value audio_info_)
 {
   CAMLparam2(ctx, audio_info_);
+  CAMLlocal1(stream);
   AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_AAC);
-  value stream = caml_alloc_tuple(StreamSize);
+  stream = caml_alloc_tuple(StreamSize);
   int ret;
 
   Stream_aux_direct_val(stream) = caml_alloc_custom(&streamaux_ops, sizeof(struct StreamAux), 0, 1);
@@ -382,8 +386,9 @@ value
 ffmpeg_frame_new(value stream, value pts_)
 {
   CAMLparam2(stream, pts_);
+  CAMLlocal1(frame);
   double pts = Double_val(pts_);
-  value frame = wrap_ptr(&avframe_ops, av_frame_alloc());
+  frame = wrap_ptr(&avframe_ops, av_frame_alloc());
   AVFrame_val(frame)->format = USER_PIXFORMAT; // 0xrrggbbaa
   AVFrame_val(frame)->width = Stream_aux_val(stream)->avstream->codec->width;
   AVFrame_val(frame)->height = Stream_aux_val(stream)->avstream->codec->height;

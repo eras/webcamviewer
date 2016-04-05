@@ -44,6 +44,7 @@ let rec finish controls callback =
   | x::xs -> x#finish (fun () -> finish xs callback)
 
 let main () =
+  Printf.printf "WebcamViewer %s\n%!" Version.version;
   let http_mt = GtkCurlLoop.make () in
   let main_window = GWindow.window ~border_width:10 () in
   Gobject.set GtkBaseProps.Window.P.allow_shrink main_window#as_window true;

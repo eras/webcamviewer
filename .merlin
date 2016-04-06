@@ -8,5 +8,6 @@ PKG cairo2
 PKG toml
 PKG threads
 PKG ctypes
+PKG oUnit
 FLG -w -40
 FLG +threads

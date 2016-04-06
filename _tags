@@ -1,3 +1,4 @@
 "ffmpeg": include
+"test": include
 "src": include
 <*.top>: use_libFFmpeg, package(batteries), package(ctypes)

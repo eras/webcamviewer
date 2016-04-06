@@ -15,28 +15,29 @@ You need OCaml 4.01.0 and the following OCaml libraries, all easily acquired wit
 * lablgtk2
 * pcre
 * toml
+* ctypes
 
-In addition you need libturbojpeg development headers (and library)
-installed. Tested with Debian Unstable's libturbojpeg1-dev
-1.3...
-
-WebcamViewer now uses FFmpeg for saving video streams while the
-TurboJPEG-code hasn't been removed yet, so you will need
-libavcodec-dev libavformat-dev libswscale-dev libavutil-dev as well.
+In addition you need libturbojpeg and FFmpeg development headers and
+libraries installed. Tested with Debian Unstable's libturbojpeg1-dev
+1.3 and FFmpeg 2.8.6.
 
 	apt-get install libturbojpeg1-dev libavcodec-dev libavformat-dev libswscale-dev libavutil-dev
 
 The following command should bring the OCaml dependencies if you have opam installed:
 
-	opam install lablgtk ocurl pcre-ocaml batteries cairo2 toml
+	opam install lablgtk ocurl pcre-ocaml batteries cairo2 toml ctypes
 
 Then compiling is done by:
 
 	ocamlbuild webcamViewer.native
 
-And install:
+And install it:
 
 	install webcamViewer.native ~/bin/webcamviewer
+
+You can also run tests (for the FFmpeg bindings):
+
+	ocamlbuild ffmpegTests.native && ./ffmpegTests.native
 
 Setting up
 ----------

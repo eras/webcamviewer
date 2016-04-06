@@ -8,3 +8,4 @@
 <FFmpegGeneratedCTypes.*>: package(ctypes), package(ctypes.stubs)
 <FFmpegGen.*>: package(ctypes), package(ctypes.foreign), package(ctypes.stubs)
 <FFmpegGenGen-c.c>: use_ctypes
+true: bin_annot

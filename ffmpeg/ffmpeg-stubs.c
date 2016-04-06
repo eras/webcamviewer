@@ -15,6 +15,7 @@
 #include <caml/fail.h>
 #include <caml/bigarray.h>
 #include <caml/threads.h>
+#include <caml/callback.h>
 
 struct Context {
   AVFormatContext*   fmtCtx;
@@ -102,6 +103,46 @@ wrap_ptr(struct custom_operations *custom, void* ptr)
   return v;
 }
 
+enum Exception {
+  ExnContextAlloc,
+  ExnOpen,
+  ExnFileIO,
+  ExnStreamInfo,
+  ExnWriteHeader,
+  ExnMemory,
+  ExnLogic,
+  ExnEncode
+};
+
+static
+void
+raise(enum Exception exn, int error)
+{
+  value args[2];
+  args[0] = Val_int((int) exn);
+  args[1] = Val_int(error);
+  caml_raise_with_args(*caml_named_value("FFmpeg exception"), 2, args);
+}
+
+static
+void
+raise_if_not(int condition, enum Exception exn, int error)
+{
+  if (!condition) {
+    raise(exn, error);
+  }
+}
+
+static
+void
+raise_and_leave_blocking_section_if_not(int condition, enum Exception exn, int error)
+{
+  if (!condition) {
+    caml_leave_blocking_section();
+    raise(exn, error);
+  }
+}
+
 value
 ffmpeg_create(value filename_)
 {
@@ -117,9 +158,9 @@ ffmpeg_create(value filename_)
   AVFormatContext* fmtCtx;
   caml_enter_blocking_section();
   ret = avformat_alloc_output_context2(&fmtCtx, NULL, NULL, (char*) filename_);
-  assert(ret >= 0);
-
   caml_leave_blocking_section();
+  raise_if_not(ret >= 0, ExnContextAlloc, ret);
+
   Context_val(ctx)->fmtCtx = fmtCtx;
   CAMLreturn(ctx);
 }
@@ -140,10 +181,10 @@ ffmpeg_open_input(value filename_)
   char* filename = Context_val(ctx)->filename;
   caml_enter_blocking_section();
   ret = avformat_open_input(&fmtCtx, filename, NULL, NULL);
-  assert(ret >= 0);
+  raise_and_leave_blocking_section_if_not(ret >= 0, ExnOpen, ret);
 
   ret = avformat_find_stream_info(fmtCtx, NULL);
-  assert(ret >= 0);
+  raise_and_leave_blocking_section_if_not(ret >= 0, ExnStreamInfo, ret);
 
   caml_leave_blocking_section();
   Context_val(ctx)->fmtCtx = fmtCtx;
@@ -161,12 +202,12 @@ ffmpeg_open(value ctx)
   caml_enter_blocking_section();
   if (!(fmtCtx->flags & AVFMT_NOFILE)) {
     ret = avio_open(&fmtCtx->pb, filename, AVIO_FLAG_WRITE);
-    assert(ret >= 0);
+    raise_and_leave_blocking_section_if_not(ret >= 0, ExnFileIO, ret);
   }
 
   ret = avformat_write_header(fmtCtx, NULL);
   caml_leave_blocking_section();
-  assert(ret >= 0);
+  raise_if_not(ret >= 0, ExnWriteHeader, ret);
   CAMLreturn(Val_unit);
 }
 
@@ -184,7 +225,7 @@ ffmpeg_close(value ctx)
 
   if (!(fmtCtx->flags & AVFMT_NOFILE)) {
     int ret = avio_close(fmtCtx->pb);
-    assert(ret >= 0);
+    raise_and_leave_blocking_section_if_not(ret >= 0, ExnFileIO, ret);
   }
 
   caml_leave_blocking_section();
@@ -200,7 +241,7 @@ ffmpeg_write(value stream, value rgbaFrame)
   CAMLparam2(stream, rgbaFrame);
   int ret;
   AVFrame* yuvFrame = av_frame_alloc();
-  assert(yuvFrame);
+  raise_if_not(!!yuvFrame, ExnMemory, 0);
 
   struct StreamAux streamAux = *Stream_aux_val(stream);
   AVFormatContext* fmtCtx = Stream_context_val(stream)->fmtCtx;
@@ -210,10 +251,10 @@ ffmpeg_write(value stream, value rgbaFrame)
   yuvFrame->height = AVFrame_val(rgbaFrame)->height;
 
   ret = av_frame_get_buffer(yuvFrame, 32);
-  assert(ret >= 0);
+  raise_if_not(ret >= 0, ExnMemory, ret);
 
   ret = av_frame_make_writable(yuvFrame);
-  assert(ret >= 0);
+  raise_if_not(ret >= 0, ExnMemory, ret);
 
   yuvFrame->pts = AVFrame_val(rgbaFrame)->pts;
 
@@ -228,11 +269,11 @@ ffmpeg_write(value stream, value rgbaFrame)
   av_init_packet(&packet);
   int gotIt = 0;
   ret = avcodec_encode_video2(streamAux.avstream->codec, &packet, yuvFrame, &gotIt);
-  assert(ret >= 0);
+  raise_and_leave_blocking_section_if_not(ret >= 0, ExnEncode, ret);
   if (gotIt) {
     packet.stream_index = 0;
     ret = av_interleaved_write_frame(fmtCtx, &packet);
-    assert(ret >= 0);
+    raise_and_leave_blocking_section_if_not(ret >= 0, ExnFileIO, ret);
   }
 
   av_frame_free(&yuvFrame);
@@ -283,7 +324,7 @@ ffmpeg_stream_new_video(value ctx, value video_info_)
 
   caml_enter_blocking_section();
   ret = avcodec_open2( codecCtx, codec, &codecOpts);
-  assert(ret >= 0);
+  raise_and_leave_blocking_section_if_not(ret >= 0, ExnOpen, ret);
   caml_leave_blocking_section();
 
   assert(Stream_aux_val(stream)->avstream->codec->pix_fmt == AV_PIX_FMT_YUV420P);
@@ -328,7 +369,7 @@ ffmpeg_stream_new_audio(value ctx, value audio_info_)
 
   caml_enter_blocking_section();
   ret = avcodec_open2(codecCtx, codec, &codecOpts);
-  assert(ret >= 0);
+  raise_and_leave_blocking_section_if_not(ret >= 0, ExnOpen, ret);
   caml_leave_blocking_section();
 
   if (Stream_aux_val(stream)->avstream->codec->sample_fmt != AV_SAMPLE_FMT_S16) {
@@ -373,15 +414,17 @@ ffmpeg_stream_close(value stream)
   if (Stream_aux_val(stream)->avstream->codec->flags & AV_CODEC_CAP_DELAY) {
     int gotIt;
     AVPacket packet = { 0 };
+    caml_enter_blocking_section();
     do {
       int ret = avcodec_encode_video2(Stream_aux_val(stream)->avstream->codec, &packet, NULL, &gotIt);
-      assert(ret >= 0);
+      raise_and_leave_blocking_section_if_not(ret >= 0, ExnEncode, ret);
       if (gotIt) {
         packet.stream_index = 0;
         ret = av_interleaved_write_frame(Stream_context_val(stream)->fmtCtx, &packet);
-        assert(ret >= 0);
+        raise_and_leave_blocking_section_if_not(ret >= 0, ExnFileIO, ret);
       }
     } while (gotIt);
+    caml_leave_blocking_section();
   }
 
   avcodec_close(Stream_aux_val(stream)->avstream->codec);
@@ -405,10 +448,10 @@ ffmpeg_frame_new(value stream, value pts_)
 
   int ret;
   ret = av_frame_get_buffer(AVFrame_val(frame), 32);
-  assert(ret >= 0);
+  raise_if_not(ret >= 0, ExnMemory, ret);
 
   ret = av_frame_make_writable(AVFrame_val(frame));
-  assert(ret >= 0);
+  raise_if_not(ret >= 0, ExnLogic, ret);
 
   AVFrame_val(frame)->pts = pts = (int64_t) (Stream_aux_val(stream)->avstream->time_base.den * pts);
 

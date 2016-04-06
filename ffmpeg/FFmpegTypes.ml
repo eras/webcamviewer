@@ -38,3 +38,15 @@ let read = `Read
 let write = `Write
 
 type index = int
+
+type ffmpeg_exception =
+  | ContextAlloc
+  | Open
+  | FileIO
+  | StreamInfo
+  | WriteHeader
+  | Memory
+  | Logic
+  | Encode
+
+exception Exception of ffmpeg_exception * int

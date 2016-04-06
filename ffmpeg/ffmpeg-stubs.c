@@ -219,7 +219,9 @@ ffmpeg_close(value ctx)
 
   AVFormatContext* fmtCtx = Context_val(ctx)->fmtCtx;
   caml_enter_blocking_section();
-  av_write_trailer(fmtCtx);
+  if (fmtCtx->pb) {
+    av_write_trailer(fmtCtx);
+  }
   //avcodec_close(Context_val(ctx)->avstream->codec); ??
   avformat_free_context(fmtCtx);
 

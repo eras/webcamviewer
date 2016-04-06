@@ -4,6 +4,8 @@ Webcam Viewer
 This is a simple tool for viewing multiple HTTP Webcam streams
 simultaneously. Licensed under the MIT license.
 
+![screenshot](https://cloud.githubusercontent.com/assets/1159374/14331146/a2935a3a-fc4c-11e5-9996-1b119b80815d.png)
+
 Compiling
 ---------
 

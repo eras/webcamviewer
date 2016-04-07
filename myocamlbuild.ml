@@ -68,11 +68,13 @@ let setup_ffmpeg () =
 
   flag ["mktop"; "use_libFFmpeg"] (A"-custom");
 
-  flag ["c"; "compile"; "build_FFmpeg"] (S (ccoptify @@ Lazy.force ffmpeg_flags));
-  flag ["c"; "compile"; "build_FFmpeg"] (S [A "-ccopt"; A "-O0"]);
-  flag ["c"; "compile"; "build_FFmpeg"] (S [A "-ccopt"; A "-W"]);
-  flag ["c"; "compile"; "build_FFmpeg"] (S [A "-ccopt"; A "-Wall"]);
-  flag ["c"; "compile"; "build_FFmpeg"] (S [A "-ccopt"; A "-Wno-missing-field-initializers"]);
+  flag ["c"; "compile"; "build_FFmpeg"] (S [
+      (S (ccoptify @@ Lazy.force ffmpeg_flags));
+      (S [A "-ccopt"; A "-O0"]);
+      (S [A "-ccopt"; A "-W"]);
+      (S [A "-ccopt"; A "-Wall"]);
+      (S [A "-ccopt"; A "-Wno-missing-field-initializers"])
+    ]);
   flag ["link"; "library"; "ocaml"; "build_FFmpeg"] (S[
       S (ccoptify @@ Lazy.force ffmpeg_libs);
       S [A "-cclib"; A "-Lffmpeg"; A "-cclib"; A"-lFFmpeg-stubs"]

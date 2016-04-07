@@ -67,8 +67,6 @@ let setup_ffmpeg () =
   ocaml_lib "ffmpeg/libFFmpeg";
 
   flag ["mktop"; "use_libFFmpeg"] (A"-custom");
-  dep ["link"; "use_libFFmpeg"; "byte"] ["ffmpeg/libFFmpeg.cma"];
-  dep ["link"; "use_libFFmpeg"; "native"] ["ffmpeg/libFFmpeg.cmxa"];
 
   flag ["c"; "compile"; "build_FFmpeg"] (S (ccoptify @@ Lazy.force ffmpeg_flags));
   flag ["c"; "compile"; "build_FFmpeg"] (S [A "-ccopt"; A "-O0"]);

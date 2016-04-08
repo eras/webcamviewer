@@ -48,5 +48,6 @@ type ffmpeg_exception =
   | Memory
   | Logic
   | Encode
+  | Closed
 
 exception Exception of ffmpeg_exception * int

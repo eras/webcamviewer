@@ -111,7 +111,8 @@ enum Exception {
   ExnWriteHeader,
   ExnMemory,
   ExnLogic,
-  ExnEncode
+  ExnEncode,
+  ExnClosed
 };
 
 static
@@ -217,23 +218,26 @@ ffmpeg_close(value ctx)
 {
   CAMLparam1(ctx);
 
-  AVFormatContext* fmtCtx = Context_val(ctx)->fmtCtx;
-  caml_enter_blocking_section();
-  if (fmtCtx->pb) {
-    av_write_trailer(fmtCtx);
-  }
-  //avcodec_close(Context_val(ctx)->avstream->codec); ??
-  avformat_free_context(fmtCtx);
+  if (Context_val(ctx)->fmtCtx) {
+    AVFormatContext* fmtCtx = Context_val(ctx)->fmtCtx;
+    caml_enter_blocking_section();
+    if (fmtCtx->pb) {
+      av_write_trailer(fmtCtx);
+    }
+    //avcodec_close(Context_val(ctx)->avstream->codec); ??
+    avformat_free_context(fmtCtx);
 
-  if (!(fmtCtx->flags & AVFMT_NOFILE)) {
-    int ret = avio_close(fmtCtx->pb);
-    raise_and_leave_blocking_section_if_not(ret >= 0, ExnFileIO, ret);
-  }
+    if (!(fmtCtx->flags & AVFMT_NOFILE)) {
+      int ret = avio_close(fmtCtx->pb);
+      raise_and_leave_blocking_section_if_not(ret >= 0, ExnFileIO, ret);
+    }
 
-  caml_leave_blocking_section();
-  Context_val(ctx)->fmtCtx = NULL;
-  free(Context_val(ctx)->filename);
-  Context_val(ctx)->filename = NULL;
+    caml_leave_blocking_section();
+    Context_val(ctx)->fmtCtx = NULL;
+    free(Context_val(ctx)->filename);
+    Context_val(ctx)->filename = NULL;
+  }
+  
   CAMLreturn(Val_unit);
 }
 
@@ -290,6 +294,7 @@ ffmpeg_stream_new_video(value ctx, value video_info_)
 {
   CAMLparam2(ctx, video_info_);
   CAMLlocal1(stream);
+
   stream = caml_alloc_tuple(StreamSize);
   AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_H264);
   int ret;
@@ -335,7 +340,7 @@ ffmpeg_stream_new_video(value ctx, value video_info_)
     sws_getContext(Stream_aux_val(stream)->avstream->codec->width, Stream_aux_val(stream)->avstream->codec->height, USER_PIXFORMAT,
                    Stream_aux_val(stream)->avstream->codec->width, Stream_aux_val(stream)->avstream->codec->height, Stream_aux_val(stream)->avstream->codec->pix_fmt,
                    0, NULL, NULL, NULL);
-
+  
   CAMLreturn((value) stream);
 }
 
@@ -396,13 +401,17 @@ ffmpeg_stream_new(value ctx, value media_kind_)
   CAMLparam2(ctx, media_kind_);
   CAMLlocal1(ret);
 
-  switch (Tag_val(media_kind_)) {
-  case 0: {
-    ret = ffmpeg_stream_new_video(ctx, Field(media_kind_, 0));
-  } break;
-  case 1: {
-    ret = ffmpeg_stream_new_audio(ctx, Field(media_kind_, 0));
-  } break;
+  if (Context_val(ctx)->fmtCtx) {
+    switch (Tag_val(media_kind_)) {
+    case 0: {
+      ret = ffmpeg_stream_new_video(ctx, Field(media_kind_, 0));
+    } break;
+    case 1: {
+      ret = ffmpeg_stream_new_audio(ctx, Field(media_kind_, 0));
+    } break;
+    }
+  } else {
+    raise(ExnClosed, 0);
   }
   
   CAMLreturn(ret);
@@ -413,25 +422,31 @@ ffmpeg_stream_close(value stream)
 {
   CAMLparam1(stream);
 
-  if (Stream_aux_val(stream)->avstream->codec->flags & AV_CODEC_CAP_DELAY) {
-    int gotIt;
-    AVPacket packet = { 0 };
-    caml_enter_blocking_section();
-    do {
-      int ret = avcodec_encode_video2(Stream_aux_val(stream)->avstream->codec, &packet, NULL, &gotIt);
-      raise_and_leave_blocking_section_if_not(ret >= 0, ExnEncode, ret);
-      if (gotIt) {
-        packet.stream_index = 0;
-        ret = av_interleaved_write_frame(Stream_context_val(stream)->fmtCtx, &packet);
-        raise_and_leave_blocking_section_if_not(ret >= 0, ExnFileIO, ret);
-      }
-    } while (gotIt);
-    caml_leave_blocking_section();
-  }
+  if (Stream_context_direct_val(stream) != Val_int(0)) {
+    if (Stream_context_val(stream)->fmtCtx &&
+        Stream_aux_val(stream)->avstream->codec->flags & AV_CODEC_CAP_DELAY) {
+      int gotIt;
+      AVPacket packet = { 0 };
+      caml_enter_blocking_section();
+      do {
+        int ret = avcodec_encode_video2(Stream_aux_val(stream)->avstream->codec, &packet, NULL, &gotIt);
+        raise_and_leave_blocking_section_if_not(ret >= 0, ExnEncode, ret);
+        if (gotIt) {
+          packet.stream_index = 0;
+          ret = av_interleaved_write_frame(Stream_context_val(stream)->fmtCtx, &packet);
+          raise_and_leave_blocking_section_if_not(ret >= 0, ExnFileIO, ret);
+        }
+      } while (gotIt);
+      caml_leave_blocking_section();
+    }
 
-  avcodec_close(Stream_aux_val(stream)->avstream->codec);
-  if (Stream_aux_val(stream)->swsCtx) {
-    sws_freeContext(Stream_aux_val(stream)->swsCtx);
+    avcodec_close(Stream_aux_val(stream)->avstream->codec);
+    if (Stream_aux_val(stream)->swsCtx) {
+      sws_freeContext(Stream_aux_val(stream)->swsCtx);
+    }
+    Stream_context_direct_val(stream) = Val_int(0);
+ } else {
+    raise(ExnClosed, 0);
   }
 
   CAMLreturn(Val_unit);
@@ -442,20 +457,24 @@ ffmpeg_frame_new(value stream, value pts_)
 {
   CAMLparam2(stream, pts_);
   CAMLlocal1(frame);
-  double pts = Double_val(pts_);
-  frame = wrap_ptr(&avframe_ops, av_frame_alloc());
-  AVFrame_val(frame)->format = USER_PIXFORMAT; // 0xrrggbbaa
-  AVFrame_val(frame)->width = Stream_aux_val(stream)->avstream->codec->width;
-  AVFrame_val(frame)->height = Stream_aux_val(stream)->avstream->codec->height;
+  if (Stream_context_direct_val(stream) != Val_int(0)) {
+    double pts = Double_val(pts_);
+    frame = wrap_ptr(&avframe_ops, av_frame_alloc());
+    AVFrame_val(frame)->format = USER_PIXFORMAT; // 0xrrggbbaa
+    AVFrame_val(frame)->width = Stream_aux_val(stream)->avstream->codec->width;
+    AVFrame_val(frame)->height = Stream_aux_val(stream)->avstream->codec->height;
 
-  int ret;
-  ret = av_frame_get_buffer(AVFrame_val(frame), 32);
-  raise_if_not(ret >= 0, ExnMemory, ret);
+    int ret;
+    ret = av_frame_get_buffer(AVFrame_val(frame), 32);
+    raise_if_not(ret >= 0, ExnMemory, ret);
 
-  ret = av_frame_make_writable(AVFrame_val(frame));
-  raise_if_not(ret >= 0, ExnLogic, ret);
+    ret = av_frame_make_writable(AVFrame_val(frame));
+    raise_if_not(ret >= 0, ExnLogic, ret);
 
-  AVFrame_val(frame)->pts = pts = (int64_t) (Stream_aux_val(stream)->avstream->time_base.den * pts);
+    AVFrame_val(frame)->pts = pts = (int64_t) (Stream_aux_val(stream)->avstream->time_base.den * pts);
+  } else {
+    raise(ExnClosed, 0);
+  }
 
   CAMLreturn((value) frame);
 }

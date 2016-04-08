@@ -6,6 +6,23 @@ module FFmpegCTypes = FFmpegBindings.Types(FFmpegGeneratedCTypes)
 
 let _ = FFmpegCTypes.avmedia_type_to_c AVMEDIA_TYPE_VIDEO
 
+let _ = Printexc.register_printer @@ fun exn ->
+  match exn with
+  | Exception (kind, code) ->
+    let kind_str = match kind with
+      | ContextAlloc -> "ContextAlloc"
+      | Open -> "Open"
+      | FileIO -> "FileIO"
+      | StreamInfo -> "StreamInfo"
+      | WriteHeader -> "WriteHeader"
+      | Memory -> "Memory"
+      | Logic -> "Logic"
+      | Encode -> "Encode"
+      | Closed -> "Closed"
+    in
+    Some (Printf.sprintf "FFmpeg.Exception (%s, %d)" kind_str code)
+  | _ -> None
+
 external create_ : string -> [`Write] context = "ffmpeg_create"
 
 (* Wrapper ensuring the file gets evaluated if the functionality is used *)
@@ -33,4 +50,3 @@ external write : ('media_info, 'rw) stream -> 'media_info frame -> unit = "ffmpe
 external close_stream : ('media_info, 'rw) stream -> unit = "ffmpeg_stream_close"
 
 external close : 'rw context -> unit = "ffmpeg_close"
-

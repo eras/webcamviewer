@@ -40,12 +40,23 @@ let write_frames test_ctx =
   F.close f;
   ()
 
+let close_stream_twice test_ctx =
+  let f = F.create "new_stream.mp4" in
+  let s = F.new_stream f (F.CreateVideo { F.v_width = 128; v_height = 128 }) in
+  F.close_stream s;
+  assert_raises (FFmpeg.Exception (Closed, 0)) (fun () ->
+      F.close_stream s;
+    );
+  F.close f;
+  ()
+
 let ffmpeg =
   "FFmpeg" >:::
-  ["create_close" >:: create_close;
-   "new_stream"   >:: new_stream;
-   "write_frame"  >:: write_frame;
-   "write_frames" >:: write_frames;
+  ["create_close"       >:: create_close;
+   "new_stream"         >:: new_stream;
+   "write_frame"        >:: write_frame;
+   "write_frames"       >:: write_frames;
+   "close_stream_twice" >:: close_stream_twice;
    ]
 
 let _ =

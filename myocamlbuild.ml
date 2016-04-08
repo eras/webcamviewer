@@ -64,7 +64,7 @@ let ctypes_rules cbase phase1gen phase2gen ocaml =
        Cmd(S[P ("./" ^ phase2gen); Sh">"; A ocaml]))
 
 let setup_ffmpeg () =
-  ocaml_lib "ffmpeg/libFFmpeg";
+  ocaml_lib ~dir:"ffmpeg" "ffmpeg/libFFmpeg";
 
   flag ["mktop"; "use_libFFmpeg"] (A"-custom");
 

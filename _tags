@@ -1,4 +1,40 @@
-"ffmpeg": include
-"test": include
-"src": include
+"ffmpeg": traverse
+"test": traverse
+"src": traverse
 <*.top>: use_libFFmpeg, package(batteries), package(ctypes)
+
+true: bin_annot
+
+<ffmpeg/*>: package(batteries), \
+	package(ctypes), \
+	package(ctypes.stubs), \
+	debug
+<ffmpeg/libFFmpeg.cm{,x}a>: build_FFmpeg
+<ffmpeg/ffmpeg-stubs.c>: build_FFmpeg
+<ffmpeg/FFmpeg.*>: package(ctypes)
+<ffmpeg/FFmpegGeneratedCTypes.*>: package(ctypes), package(ctypes.stubs)
+<ffmpeg/FFmpegGen.*>: package(ctypes), package(ctypes.foreign), package(ctypes.stubs)
+<ffmpeg/FFmpegGenGen-c.c>: use_ctypes
+
+<src/*>: package(lablgtk2), \
+	package(lablgtk2.auto-init), \
+	package(curl), \
+	package(pcre), \
+	package(batteries), \
+	package(cairo2), \
+	package(cairo2.lablgtk2), \
+	use_libFFmpeg, \
+	package(ctypes), package(ctypes.foreign), package(ctypes.stubs), \
+	thread
+<src/*>: package(toml)
+<src/*>: debug, bin_annot
+<src/*>: use_turbojpeg
+<src/*>: no_warn_40
+
+<test/*>: package(oUnit), \
+	use_libFFmpeg, \
+	package(ctypes), package(ctypes.foreign), package(ctypes.stubs), \
+	package(batteries), \
+	thread
+<test/*>: debug, bin_annot
+<test/*>: no_warn_40

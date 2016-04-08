@@ -1,8 +1,0 @@
-<*>: package(oUnit), \
-	use_libFFmpeg, \
-	package(ctypes), package(ctypes.foreign), package(ctypes.stubs), \
-	package(batteries), \
-	thread
-<*>: debug, bin_annot
-<*>: no_warn_40
-

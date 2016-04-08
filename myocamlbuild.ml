@@ -85,6 +85,7 @@ let setup_ffmpeg () =
 
   flag ["compile"; "use_libFFmpeg"] (S[A"-I"; A"ffmpeg"]);
   dep ["compile"; "use_libFFmpeg"] ["ffmpeg/FFmpeg.cmi"];
+  dep ["link"; "use_libFFmpeg"] ["ffmpeg/libFFmpeg-stubs.a"];
 
   ctypes_rules "ffmpeg/FFmpegGenGen-c" "ffmpeg/FFmpegGen.byte" "ffmpeg/FFmpegGenGen" "ffmpeg/FFmpegGeneratedCTypes.ml"
 

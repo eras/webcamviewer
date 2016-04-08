@@ -31,7 +31,7 @@ The following command should bring the OCaml dependencies if you have opam insta
 
 Then compiling is done by:
 
-	ocamlbuild webcamViewer.native
+	ocamlbuild webcamViewer.itarget
 
 And install it:
 

@@ -1,6 +1,3 @@
-"ffmpeg": traverse
-"test": traverse
-"src": traverse
 <*.top>: use_libFFmpeg, package(batteries), package(ctypes)
 
 true: bin_annot

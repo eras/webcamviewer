@@ -67,6 +67,7 @@ let setup_ffmpeg () =
   ocaml_lib ~dir:"ffmpeg" "ffmpeg/libFFmpeg";
 
   flag ["mktop"; "use_libFFmpeg"] (A"-custom");
+  flag ["link"; "byte"; "use_libFFmpeg"] (A"-custom");
 
   flag ["c"; "compile"; "build_FFmpeg"] (S [
       (S (ccoptify @@ Lazy.force ffmpeg_flags));
@@ -81,6 +82,9 @@ let setup_ffmpeg () =
     ]
     );
   dep ["link"; "build_FFmpeg"] ["ffmpeg/libFFmpeg-stubs.a"];
+
+  flag ["compile"; "use_libFFmpeg"] (S[A"-I"; A"ffmpeg"]);
+  dep ["compile"; "use_libFFmpeg"] ["ffmpeg/FFmpeg.cmi"];
 
   ctypes_rules "ffmpeg/FFmpegGenGen-c" "ffmpeg/FFmpegGen.byte" "ffmpeg/FFmpegGenGen" "ffmpeg/FFmpegGeneratedCTypes.ml"
 

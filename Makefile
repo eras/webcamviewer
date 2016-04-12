@@ -1,4 +1,4 @@
-TARGET=webcamViewer.native
+TARGET=webcamViewer.otarget
 OCAMLBUILD=ocamlbuild -use-ocamlfind
 
 .PHONY: $(TARGET)

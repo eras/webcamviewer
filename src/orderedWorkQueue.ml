@@ -30,7 +30,7 @@ let worker t () =
         let () =
           try work ()
           with exn ->
-            Printf.eprintf "OrderedWorkQueue caught an unhandled exception: %s\n%!" (Printexc.to_string exn)
+            Printf.eprintf "OrderedWorkQueue caught an unhandled exception: %s\nBacktrace:%s\n%!" (Printexc.to_string exn) (Printexc.get_backtrace ());
         in
         ()
     in

@@ -151,7 +151,12 @@ let view ~work_queue ?packing config source http_mt () =
           | Some save ->
             if WorkQueue.queue_length work_queue < 20 then
               if !save_images <> None then (
-                Save.save save time (rgb_data, width, height);
+                try
+                  Save.save save time (rgb_data, width, height);
+                with exn ->
+                  Save.stop save;
+                  save_images := None;
+                  raise exn
               ) else
                 Printf.eprintf "Warning: too much pending work, skipping frames\n%!"
         with OrderedWorkQueue.Closed -> () (* ok.. *)

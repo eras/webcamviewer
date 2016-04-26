@@ -6,7 +6,7 @@ let reordered src =
   let module A = Bigarray.Array1 in
   let size = A.dim src - 1 in
   let dst = A.create (A.kind src) (A.layout src) (A.dim src) in
-  while !c < size - 3 do
+  while !c < size - 4 do
     let r = A.unsafe_get src (!c + 0) in
     let g = A.unsafe_get src (!c + 1) in
     let b = A.unsafe_get src (!c + 2) in

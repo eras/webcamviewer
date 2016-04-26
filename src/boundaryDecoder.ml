@@ -165,7 +165,7 @@ let decode_boundaries boundary (data_callback : data -> unit) : unit feed_data =
 	      feed_responses rs
 	  in
 	  feed_responses responses;
-      | Bad End_of_file -> assert false (* [<>] *)
-      | Bad exn -> raise exn
+      | Error End_of_file -> assert false (* [<>] *)
+      | Error exn -> raise exn
 in
   aux DumpData 2 0L (* the boundary is prefixed with \r\n\r\n *)

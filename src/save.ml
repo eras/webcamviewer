@@ -69,5 +69,12 @@ let stop t =
   match t.context with
   | None -> ()
   | Some ctx ->
-    FFmpeg.close_stream ctx.stream;
-    FFmpeg.close ctx.ffmpeg
+    let try' f arg =
+      try f arg
+      with exn ->
+        Printf.fprintf stderr "Exception %s while closing stream.\n%s\n%!"
+          (Printexc.to_string exn)
+          (Printexc.get_backtrace ())
+    in
+    try' FFmpeg.close_stream ctx.stream;
+    try' FFmpeg.close ctx.ffmpeg

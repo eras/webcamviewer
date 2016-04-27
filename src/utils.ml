@@ -1,5 +1,8 @@
 open Batteries
 
+(* Hack for convertin between different kinds of bigarrays (only they ocaml representation changes) *)
+external convert_bigarray1 : (_, 'a, 'b) Bigarray.Array1.t -> (_, 'a, 'b) Bigarray.Array1.t = "%identity"
+
 let split_key_value str =
   let colon = String.index str ':' in
   let key, value = 

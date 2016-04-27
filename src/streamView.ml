@@ -147,7 +147,7 @@ let view ~work_queue ?packing config source http_mt () =
     match Jpeg.decode_int Jpeg.rgb4 (Jpeg.array_of_string data.data_content) with
     | Some jpeg_image ->
       let (width, height) = (jpeg_image.Jpeg.image_width, jpeg_image.Jpeg.image_height) in
-      let rgb_data = jpeg_image.Jpeg.image_data in
+      let rgb_data = reordered jpeg_image.Jpeg.image_data in
       let () =
         try
           match !save_images with
@@ -168,7 +168,6 @@ let view ~work_queue ?packing config source http_mt () =
       SingleWorker.submit worker @@ fun () ->
       show_exn @@ fun () ->
       if !rendering = 0 then (
-        let rgb_data = reordered rgb_data in
         Thread.delay 0.2;       (* Why.. *)
         let image = Some (Cairo.Image.create_for_data8 rgb_data Cairo.Image.RGB24 width height, width, height) in
         incr rendering;

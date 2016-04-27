@@ -8,7 +8,7 @@ val start : make_filename : (float -> string) -> frame_time : (float -> float) -
 val save :
   t ->
   float ->
-  (int, 'a, 'b) Batteries.Bigarray.Array1.t * FFmpeg.width * FFmpeg.height ->
+  (int, Bigarray.int8_unsigned_elt, Bigarray.c_layout) Batteries.Bigarray.Array1.t * FFmpeg.width * FFmpeg.height ->
   unit
 
 (** [stop t] stops saving the video *)

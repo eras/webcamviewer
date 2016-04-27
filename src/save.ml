@@ -46,18 +46,13 @@ let save t time (image, width, height) =
   let frame = FFmpeg.new_frame ctx.stream frame_time in
   let frame_buf = FFmpeg.frame_buffer frame in
 
+  let image : (char, Bigarray.int8_unsigned_elt, Bigarray.c_layout) Bigarray.Array1.t = Utils.convert_bigarray1 image in
+  let module LE = EndianBigstring.LittleEndian_unsafe in
   for y = 0 to height - 1 do
     let src = ref (4 * (y * width)) in
     let dst = ref (y * ctx.width) in
     for x = 0 to width - 1 do
-      let r = image.{!src + 0} in
-      let g = image.{!src + 1} in
-      let b = image.{!src + 2} in
-      frame_buf.{!dst} <- Int32.(logor
-                                   (shift_left (of_int r) 16)
-                                   (logor
-                                      (shift_left (of_int g) 8)
-                                      (of_int b)));
+      frame_buf.{!dst} <- LE.get_int32 image !src;
       dst := !dst + 1;
       src := !src + 4;
     done;

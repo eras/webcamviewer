@@ -9,5 +9,6 @@ PKG toml
 PKG threads
 PKG ctypes
 PKG oUnit
+PKG ocplib-endian.bigstring
 FLG -w -40
 FLG +threads

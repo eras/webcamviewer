@@ -20,6 +20,7 @@ true: bin_annot
 	package(batteries), \
 	package(cairo2), \
 	package(cairo2.lablgtk2), \
+	package(ocplib-endian.bigstring), \
 	use_libFFmpeg, \
 	package(ctypes), package(ctypes.foreign), package(ctypes.stubs), \
 	thread

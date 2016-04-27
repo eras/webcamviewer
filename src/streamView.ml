@@ -1,24 +1,31 @@
 open Batteries
 open Common
 
-let reordered src =
+(* Hack for convertin between different kinds of bigarrays (only they ocaml representation changes) *)
+external convert_bigarray1 : (_, 'a, 'b) Bigarray.Array1.t -> (_, 'a, 'b) Bigarray.Array1.t = "%identity"
+
+let reordered (src : (int, 'a, 'b) Bigarray.Array1.t) : (int, 'a, 'b) Bigarray.Array1.t =
   let c = ref 0 in
+  let src = convert_bigarray1 src in
   let module A = Bigarray.Array1 in
-  let size = A.dim src - 1 in
+  let module BE = EndianBigstring.BigEndian_unsafe in
+  let size = A.dim src in
   let dst = A.create (A.kind src) (A.layout src) (A.dim src) in
   while !c < size - 4 do
-    let r = A.unsafe_get src (!c + 0) in
-    let g = A.unsafe_get src (!c + 1) in
-    let b = A.unsafe_get src (!c + 2) in
-
-    A.unsafe_set dst (!c + 0) b;
-    A.unsafe_set dst (!c + 1) g;
-    A.unsafe_set dst (!c + 2) r;
-    A.unsafe_set dst (!c + 3) 0;
-
+    ( let open Int32 in
+      let rgb = BE.get_int32 src !c in
+      let gbr =
+        logor
+          (logand (shift_right rgb 16) 0x0000ff00l)
+          (logor
+             (logand (shift_left rgb 16) 0xff000000l)
+             (logand rgb 0x00ff0000l)
+          )
+      in
+      BE.set_int32 dst !c gbr );
     c := !c + 4
   done;
-  dst
+  convert_bigarray1 dst
 
 let make_filename config source now =
   let rec find_available number =

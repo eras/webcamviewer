@@ -18,6 +18,7 @@ You need OCaml 4.01.0 and the following OCaml libraries, all easily acquired wit
 * pcre
 * toml
 * ctypes
+* ocplib-endian
 
 In addition you need libturbojpeg and FFmpeg development headers and
 libraries installed. Tested with Debian Unstable's libturbojpeg1-dev
@@ -27,7 +28,7 @@ libraries installed. Tested with Debian Unstable's libturbojpeg1-dev
 
 The following command should bring the OCaml dependencies if you have opam installed:
 
-	opam install lablgtk ocurl pcre-ocaml batteries cairo2 toml ctypes
+	opam install lablgtk ocurl pcre-ocaml batteries cairo2 toml ctypes ocplib-endian
 
 Then compiling is done by:
 
